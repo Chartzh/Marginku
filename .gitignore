@@ -1,0 +1,26 @@
+# Dependencies & Packages
+node_modules/
+frontend/node_modules/
+.bun/
+
+# Build Outputs & Cache
+dist/
+frontend/dist/
+build/
+.cache/
+
+# Internal IDE, AI Agents, Audit & Temporary Scratch
+.agents/
+.impeccable/
+scratch/
+.gemini/
+
+# Environment Variables & API Keys (Security)
+.env
+.env.*
+!.env.example
+
+# OS & Logs
+*.log
+.DS_Store
+Thumbs.db
