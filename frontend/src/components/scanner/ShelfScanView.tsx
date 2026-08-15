@@ -11,7 +11,9 @@ import {
   ArrowRight,
   Flashlight,
   Scan,
+  RefreshCw,
 } from 'lucide-react';
+import { auditLabelRak } from '@/services/api';
 
 interface ShelfScanViewProps {
   products: ProductItem[];
@@ -46,6 +48,9 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
       analysis: calc,
     };
   });
+
+  const [apiLoading, setApiLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -89,10 +94,64 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      processDetection(demoShelfPresets[0]);
+    if (!file) return;
+
+    setApiLoading(true);
+    setApiError(null);
+
+    try {
+      const result = await auditLabelRak(file);
+      if (result.status === 'success') {
+        // Cari ProductItem di products yang namanya paling cocok dengan nama_di_nota
+        const matched =
+          products.find(
+            (p) => p.name.toLowerCase() === result.nama_di_nota.toLowerCase()
+          ) ??
+          products.find((p) =>
+            p.name.toLowerCase().includes(result.nama_di_nota.toLowerCase().split(' ')[0])
+          ) ??
+          null;
+
+        const fakeProduct: ProductItem = {
+          id: matched?.id ?? 'api-result',
+          name: result.nama_label_rak,
+          category: matched?.category ?? 'Produk Terdeteksi',
+          buyPrice: result.harga_modal,
+          currentSellPrice: result.harga_rak,
+          targetMarginPercent: matched?.targetMarginPercent ?? settings.defaultTargetMarginPercent,
+          unit: matched?.unit ?? 'pcs',
+          lastUpdated: new Date().toISOString(),
+        };
+
+        const analysis = calculateMargin(
+          result.harga_modal,
+          result.harga_rak,
+          fakeProduct.targetMarginPercent,
+          settings.roundingStep,
+          settings.dangerThresholdPercent
+        );
+
+        setScanResult({
+          shelfData: {
+            id: 'api-' + Date.now(),
+            detectedName: result.nama_label_rak,
+            detectedPrice: result.harga_rak,
+            confidence: result.match_score,
+          },
+          matchedProduct: fakeProduct,
+          analysis,
+        });
+
+        setActivePresetId('');
+      } else if (result.status === 'not_found') {
+        setApiError('Produk tidak ditemukan di database nota. Scan nota supplier terlebih dahulu.');
+      }
+    } catch (err: unknown) {
+      setApiError(err instanceof Error ? err.message : 'Gagal menghubungi server AI');
+    } finally {
+      setApiLoading(false);
     }
   };
 
@@ -142,13 +201,24 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
         {/* Center Reticle Focus Area */}
         <div className="my-auto flex flex-col items-center justify-center">
           <div className="w-64 h-24 rounded border border-[#373a46] bg-[#131417] flex flex-col items-center justify-center p-3 text-center">
-            <Scan className="w-5 h-5 text-[#16a34a] mb-1 opacity-90" />
-            <span className="text-[10px] text-[#9ca3af] font-bold uppercase tracking-wider">
-              Posisikan Label Rak di Sini
-            </span>
-            <span className="text-xs font-bold text-[#f3f4f6] mt-0.5 truncate max-w-[220px]">
-              {scanResult ? scanResult.shelfData.detectedName : 'Menunggu target label...'}
-            </span>
+            {apiLoading ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin text-[#22c55e]" />
+                <span className="text-[10px] text-[#9ca3af] font-bold uppercase tracking-wider mt-1">
+                  AI menganalisis...
+                </span>
+              </>
+            ) : (
+              <>
+                <Scan className="w-5 h-5 text-[#16a34a] mb-1 opacity-90" />
+                <span className="text-[10px] text-[#9ca3af] font-bold uppercase tracking-wider">
+                  Posisikan Label Rak di Sini
+                </span>
+                <span className="text-xs font-bold text-[#f3f4f6] mt-0.5 truncate max-w-[220px]">
+                  {scanResult ? scanResult.shelfData.detectedName : 'Menunggu target label...'}
+                </span>
+              </>
+            )}
           </div>
         </div>
 
@@ -168,6 +238,13 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
           <span className="text-[#f3f4f6] font-bold tabular-nums">Akurasi 98.4%</span>
         </div>
       </div>
+
+      {/* Error Message if API Error */}
+      {apiError && (
+        <div className="text-xs text-[#f87171] font-bold px-1 py-2">
+          {apiError}
+        </div>
+      )}
 
       {/* Preset Chips (Swiss Horizontal Row) */}
       <div className="space-y-1.5">
