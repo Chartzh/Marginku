@@ -269,6 +269,32 @@ export const App: React.FC = () => {
     });
   };
 
+  // Apply Target Margin to All Products in Catalog
+  const handleApplyMarginToAllProducts = (targetMargin: number) => {
+    setProducts((prev) =>
+      prev.map((prod) => {
+        const calc = calculateMargin(
+          prod.buyPrice,
+          prod.currentSellPrice,
+          targetMargin,
+          settings.roundingStep,
+          settings.dangerThresholdPercent
+        );
+        return {
+          ...prod,
+          targetMarginPercent: targetMargin,
+          currentSellPrice: calc.smartRoundedSellPrice,
+          lastUpdated: new Date().toISOString(),
+        };
+      })
+    );
+
+    setToast({
+      message: `Harga seluruh produk disesuaikan ke target margin ${targetMargin}%`,
+      visible: true,
+    });
+  };
+
   // Reset demo dataset
   const handleResetDemoData = () => {
     localStorage.removeItem('marginku_products');
@@ -329,6 +355,7 @@ export const App: React.FC = () => {
             settings={settings}
             onSaveSettings={(newSet) => setSettings(newSet)}
             onResetDemoData={handleResetDemoData}
+            onApplyMarginToAllProducts={handleApplyMarginToAllProducts}
           />
         )}
       </main>

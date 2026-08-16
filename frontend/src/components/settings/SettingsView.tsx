@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StoreSettings } from '@/types';
 import {
   Settings,
@@ -7,6 +7,8 @@ import {
   Coins,
   ShieldAlert,
   RotateCcw,
+  RefreshCw,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface SettingsViewProps {
@@ -14,6 +16,7 @@ interface SettingsViewProps {
   onUpdateSettings?: (newSettings: Partial<StoreSettings>) => void;
   onSaveSettings?: (newSettings: StoreSettings) => void;
   onResetDemoData: () => void;
+  onApplyMarginToAllProducts?: (targetMargin: number) => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -21,12 +24,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onUpdateSettings,
   onSaveSettings,
   onResetDemoData,
+  onApplyMarginToAllProducts,
 }) => {
+  const [isAppliedSuccess, setIsAppliedSuccess] = useState(false);
+
   const update = (partial: Partial<StoreSettings>) => {
+    setIsAppliedSuccess(false);
     if (onUpdateSettings) {
       onUpdateSettings(partial);
     } else if (onSaveSettings) {
       onSaveSettings({ ...settings, ...partial });
+    }
+  };
+
+  const handleApplyToAll = () => {
+    if (onApplyMarginToAllProducts) {
+      onApplyMarginToAllProducts(settings.defaultTargetMarginPercent);
+      setIsAppliedSuccess(true);
+      setTimeout(() => setIsAppliedSuccess(false), 3000);
     }
   };
 
@@ -85,6 +100,31 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <span>15% (Standar Warung)</span>
           <span>35% (Tinggi)</span>
         </div>
+
+        <p className="text-[11px] text-[#9ca3af] bg-[#131417] p-2.5 rounded border border-[#262830] leading-relaxed">
+          💡 Menggeser margin akan memperbarui analisis batas kesehatan produk (Margin Kritis / Untung Tipis). Tekan tombol di bawah untuk langsung memperbarui seluruh harga jual barang di katalog.
+        </p>
+
+        <button
+          onClick={handleApplyToAll}
+          className={`w-full min-h-[48px] px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+            isAppliedSuccess
+              ? 'bg-[#131417] border border-[#166534] text-[#22c55e]'
+              : 'bg-[#16a34a] hover:bg-[#15803d] text-white'
+          }`}
+        >
+          {isAppliedSuccess ? (
+            <>
+              <CheckCircle2 className="w-4 h-4 text-[#22c55e]" />
+              <span>Seluruh harga barang telah disesuaikan ({settings.defaultTargetMarginPercent}%)</span>
+            </>
+          ) : (
+            <>
+              <RefreshCw className="w-4 h-4" />
+              <span>Terapkan Margin {settings.defaultTargetMarginPercent}% ke Seluruh Harga Barang</span>
+            </>
+          )}
+        </button>
       </div>
 
       {/* Rupiah Rounding Step */}
