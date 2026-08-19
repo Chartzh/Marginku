@@ -4,7 +4,7 @@ Scan foto nota supplier atau label harga rak.
 """
 import google.generativeai as genai
 from PIL import Image
-import json, re, os
+import json, re, os, time
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -68,8 +68,28 @@ class OCREngine:
 
     def _call(self, image_path: str, prompt: str) -> dict:
         img = Image.open(image_path)
-        resp = self.model.generate_content([prompt, img])
-        return self._parse_response(resp.text)
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+
+        # Optimasi: Kompres/resize gambar maksimal 1024px
+        # Menghindari timeout gRPC / 504 Deadline Expired pada foto HP resolusi tinggi
+        max_dim = 1024
+        if max(img.size) > max_dim:
+            img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+
+        last_error = None
+        for attempt in range(2):
+            try:
+                resp = self.model.generate_content(
+                    [prompt, img],
+                    request_options={"timeout": 60.0}
+                )
+                return self._parse_response(resp.text)
+            except Exception as e:
+                last_error = e
+                if attempt == 0:
+                    time.sleep(1)
+        raise last_error
 
     def scan_nota(self, image_path: str) -> dict:
         """Scan foto nota supplier → daftar produk + harga modal."""
@@ -82,7 +102,6 @@ class OCREngine:
 # ── Test ───────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     from PIL import ImageDraw
-    import os
 
     os.makedirs("data/test_images", exist_ok=True)
 

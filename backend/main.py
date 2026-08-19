@@ -1,6 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from api.routes import router
+from database import supabase_admin
+from auth import get_current_user_id
 
 app = FastAPI(
     title="Marginku API",
@@ -10,7 +12,11 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "*"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
