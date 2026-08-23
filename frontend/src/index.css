@@ -4,46 +4,46 @@
 
 @layer base {
   :root {
-    /* Swiss Style / Warm Rationalism Design Tokens */
-    --background: 228 10% 8%;       /* #131417 Warm Charcoal */
-    --foreground: 220 14% 96%;      /* #f3f4f6 Pure Contrast Off-White */
+    /* Warung Profit Optimizer Design Tokens */
+    --background: 160 14% 8%;       /* #121816 Charcoal Background */
+    --foreground: 120 3% 89%;       /* #e0e3e0 On-Surface */
 
-    --card: 228 9% 11%;             /* #18191e Elevated Grid Surface */
-    --card-foreground: 220 14% 96%;
+    --card: 165 17% 13%;             /* #1B2724 Teal-Slate Surface */
+    --card-foreground: 120 3% 89%;
 
-    --popover: 228 9% 11%;
-    --popover-foreground: 220 14% 96%;
+    --popover: 165 17% 13%;
+    --popover-foreground: 120 3% 89%;
 
-    --primary: 142 71% 45%;         /* #16a34a Swiss Functional Green */
+    --primary: 160 84% 39%;         /* #10B981 Emerald Green */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 228 8% 16%;        /* #262830 */
-    --secondary-foreground: 220 14% 96%;
+    --secondary: 165 17% 13%;        /* #1B2724 Teal-Slate */
+    --secondary-foreground: 120 3% 89%;
 
-    --muted: 228 8% 13%;            /* #1f2127 */
-    --muted-foreground: 220 9% 60%; /* #9ca3af */
+    --muted: 165 6% 12%;            /* #1c201f */
+    --muted-foreground: 153 7% 76%; /* #bec9c4 */
 
-    --accent: 228 8% 16%;           /* #262830 */
-    --accent-foreground: 220 14% 96%;
+    --accent: 165 17% 13%;           /* #1B2724 */
+    --accent-foreground: 120 3% 89%;
 
-    --destructive: 0 72% 51%;       /* #dc2626 Swiss Alert Red */
+    --destructive: 0 72% 51%;       /* #DC2626 Crimson Red */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 228 8% 16%;           /* #262830 1px Structural Grid Line */
-    --input: 228 8% 16%;
-    --ring: 142 71% 45%;
+    --border: 156 8% 26%;           /* #3f4945 Outline-Variant */
+    --input: 156 8% 26%;
+    --ring: 160 84% 39%;
 
-    --radius: 0.5rem;               /* 8px Swiss Functional Max Radius */
+    --radius: 0.5rem;               /* 8px radius */
   }
 }
 
 @layer base {
   * {
-    border-color: #262830;
+    border-color: #3f4945;
   }
   body {
-    background-color: #131417;
-    color: #f3f4f6;
+    background-color: #121816;
+    color: #e0e3e0;
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
     letter-spacing: -0.015em;
@@ -73,7 +73,7 @@
 
 /* 1px Structural Swiss Grid Line */
 .swiss-grid-border {
-  border: 1px solid #262830;
+  border: 1px solid #3f4945;
 }
 
 /* Custom Minimalist Scrollbar */
@@ -83,10 +83,10 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #131417;
+  background: #121816;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #262830;
+  background: #3f4945;
   border-radius: 2px;
 }

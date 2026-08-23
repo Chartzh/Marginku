@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProductItem, StoreSettings } from '@/types';
 import { calculateMargin } from '@/lib/math';
 import { formatRupiah } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
@@ -13,6 +14,7 @@ import {
   ArrowRight,
   CheckCircle2,
   SlidersHorizontal,
+  Pencil,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -21,214 +23,203 @@ interface MarginAlertModalProps {
   onClose: () => void;
   product: ProductItem | null;
   settings: StoreSettings;
-  onAcceptPrice: (productId: string, newPrice: number) => void;
-  onOverridePrice: (productId: string, overridePrice: number, note?: string) => void;
+  onAcceptPrice: (productId: string, newPrice: number, name?: string) => void;
+  onOverridePrice: (
+    productId: string,
+    overridePrice: number,
+    category?: string,
+    stock?: number,
+    name?: string,
+    note?: string,
+    unit?: string,
+    buyPrice?: number
+  ) => void;
 }
 
 export const MarginAlertModal: React.FC<MarginAlertModalProps> = ({
   isOpen,
   onClose,
   product,
-  settings,
   onAcceptPrice,
   onOverridePrice,
 }) => {
-  const [isOverrideMode, setIsOverrideMode] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [categoryInput, setCategoryInput] = useState('');
+  const [stockInput, setStockInput] = useState('');
+  const [unitInput, setUnitInput] = useState('');
+  const [buyPriceInput, setBuyPriceInput] = useState('');
   const [customPriceInput, setCustomPriceInput] = useState('');
-  const [overrideNote, setOverrideNote] = useState('');
+
+  // Sync state with product data when modal opens or product changes
+  useEffect(() => {
+    if (product) {
+      setNameInput(product.name || '');
+      setCategoryInput(product.category || 'Sembako');
+      setStockInput(product.stockQty?.toString() || '0');
+      setUnitInput(product.unit || 'pcs');
+      setBuyPriceInput(product.buyPrice?.toString() || '0');
+      setCustomPriceInput(product.currentSellPrice?.toString() || '0');
+    }
+  }, [product]);
 
   if (!product) return null;
 
-  const analysis = calculateMargin(
-    product.buyPrice,
-    product.currentSellPrice,
-    product.targetMarginPercent || settings.defaultTargetMarginPercent,
-    settings.roundingStep,
-    settings.dangerThresholdPercent
-  );
-
-  const handleAccept = () => {
-    confetti({
-      particleCount: 40,
-      spread: 50,
-      origin: { y: 0.7 },
-      colors: ['#16a34a', '#22c55e', '#15803d'],
-    });
-
-    onAcceptPrice(product.id, analysis.smartRoundedSellPrice);
-    onClose();
-  };
-
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const priceNum = parseInt(customPriceInput.replace(/\D/g, ''), 10);
-    if (!isNaN(priceNum) && priceNum > 0) {
-      onOverridePrice(product.id, priceNum, overrideNote);
-      setIsOverrideMode(false);
-      setCustomPriceInput('');
+    const priceNum = parseFloat(customPriceInput);
+    const stockNum = parseInt(stockInput, 10);
+    const buyNum = parseFloat(buyPriceInput);
+
+    if (priceNum >= 0 && nameInput.trim()) {
+      onOverridePrice(
+        product.id,
+        priceNum,
+        categoryInput,
+        isNaN(stockNum) ? undefined : stockNum,
+        nameInput.trim(),
+        undefined, // note
+        unitInput.trim(),
+        buyNum
+      );
+      
+      confetti({
+        particleCount: 40,
+        spread: 50,
+        origin: { y: 0.7 },
+        colors: ['#10B981', '#22c55e', '#15803D'],
+      });
+      
       onClose();
     }
   };
 
-  const isCritical = analysis.status === 'DANGER';
-  const isLoss = analysis.activeMarginPercent < 0;
-  const untungNominalPerItem = analysis.smartRoundedSellPrice - product.buyPrice;
+  // Real-time calculations inside the form
+  const parsedBuyPrice = parseFloat(buyPriceInput) || 0;
+  const parsedSellPrice = parseFloat(customPriceInput) || 0;
+  const computedProfit = parsedSellPrice - parsedBuyPrice;
+  const computedMargin = parsedSellPrice > 0 ? (computedProfit / parsedSellPrice) * 100 : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md p-0 overflow-hidden border-[#262830] bg-[#18191e] rounded-lg text-[#f3f4f6] font-sans">
-        {/* Header Alert (Swiss Style) */}
-        <div
-          className={`p-4 border-b ${
-            isCritical
-              ? 'bg-[#3b181b] border-[#b91c1c]'
-              : analysis.status === 'WARNING'
-              ? 'bg-[#3d2612] border-[#b45309]'
-              : 'bg-[#142e1f] border-[#166534]'
-          }`}
-        >
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5">
-              {isCritical ? (
-                <AlertOctagon className="w-5 h-5 text-[#f87171]" />
-              ) : analysis.status === 'WARNING' ? (
-                <AlertTriangle className="w-5 h-5 text-[#fbbf24]" />
-              ) : (
-                <CheckCircle2 className="w-5 h-5 text-[#22c55e]" />
-              )}
-            </div>
-            <div className="flex-1">
-              <span className="text-[10px] font-extrabold tracking-wider uppercase px-2 py-0.5 rounded bg-black/40 text-[#f3f4f6]">
-                {isLoss ? 'Jual rugi' : isCritical ? 'Margin kritis' : analysis.status === 'WARNING' ? 'Untung tipis' : 'Margin aman'}
-              </span>
-              <DialogTitle className="text-base font-extrabold mt-1 text-[#f3f4f6] leading-snug">
-                {product.name}
-              </DialogTitle>
-            </div>
+      <DialogContent className="max-w-md bg-white border-2 border-[#1A1A1A] p-6 rounded-lg text-[#1A1A1A] font-sans [&>button]:hidden">
+        <DialogHeader className="border-b-2 border-gray-200 pb-3">
+          <DialogTitle className="text-2xl font-black text-[#1A1A1A]">
+            Detail & Edit Barang
+          </DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleCustomSubmit} className="space-y-4 mt-3 text-lg">
+          {/* Field 1: Nama Produk */}
+          <div>
+            <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Nama Produk</label>
+            <input
+              type="text"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              className="w-full h-[60px] px-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] focus:outline-none focus:border-[#15803D] font-bold"
+              required
+            />
           </div>
-        </div>
 
-        <div className="p-4 space-y-3.5">
-          {/* 2-Column Price Comparison Grid */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="p-3 rounded-lg bg-[#131417] border border-[#262830]">
-              <span className="text-[11px] text-[#9ca3af] font-medium block">Harga Modal Kulakan</span>
-              <div className="text-sm font-extrabold text-[#f3f4f6] mt-0.5 tabular-nums">
-                {formatRupiah(product.buyPrice)}
-              </div>
-              <span className="text-[10px] text-[#f87171] font-semibold block mt-0.5">
-                Struk Agen Grosir
-              </span>
-            </div>
-
-            <div className="p-3 rounded-lg bg-[#131417] border border-[#262830]">
-              <span className="text-[11px] text-[#9ca3af] font-medium block">Harga Jual Rak Toko</span>
-              <div className="text-sm font-extrabold text-[#f3f4f6] mt-0.5 tabular-nums">
-                {formatRupiah(product.currentSellPrice)}
-              </div>
-              <span
-                className={`text-[10px] font-bold mt-0.5 block tabular-nums ${
-                  isCritical ? 'text-[#f87171]' : 'text-[#fbbf24]'
-                }`}
+          {/* Field 2 & 4: Kategori Dropdown & Nama Stok/Satuan */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Kategori</label>
+              <select
+                value={categoryInput}
+                onChange={(e) => setCategoryInput(e.target.value)}
+                className="w-full h-[60px] px-3 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] focus:outline-none focus:border-[#15803D] font-bold"
               >
-                Margin: {analysis.activeMarginPercent.toFixed(1)}%
-              </span>
+                <option value="Sembako">Sembako</option>
+                <option value="Makanan Instan">Makanan Instan</option>
+                <option value="Minuman">Minuman</option>
+                <option value="Kebutuhan Rumah">Kebutuhan Rumah</option>
+                <option value="Snack">Snack</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Nama Stok / Satuan</label>
+              <input
+                type="text"
+                value={unitInput}
+                onChange={(e) => setUnitInput(e.target.value)}
+                className="w-full h-[60px] px-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] focus:outline-none focus:border-[#15803D] font-bold"
+                required
+              />
             </div>
           </div>
 
-          {!isOverrideMode ? (
-            /* Swiss Recommendation Action Box */
-            <div className="p-4 rounded-lg bg-[#131417] border border-[#166534] space-y-3">
-              <div className="flex items-baseline justify-between border-b border-[#262830] pb-2.5">
-                <div>
-                  <span className="text-xs font-bold text-[#22c55e] block">
-                    Rekomendasi Harga Jual Baru
-                  </span>
-                  <div className="text-3xl font-extrabold text-[#f3f4f6] tracking-tight tabular-nums mt-0.5">
-                    {formatRupiah(analysis.smartRoundedSellPrice)}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-[11px] text-[#9ca3af] block font-medium">Untung Bersih</span>
-                  <div className="text-xs font-extrabold text-[#22c55e] tabular-nums">
-                    +{formatRupiah(untungNominalPerItem)} ({analysis.recommendedMarginPercent.toFixed(1)}%)
-                  </div>
-                </div>
-              </div>
+          {/* Field 3: Total Stok */}
+          <div>
+            <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Total Stok</label>
+            <input
+              type="number"
+              value={stockInput}
+              onChange={(e) => setStockInput(e.target.value)}
+              className="w-full h-[60px] px-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] focus:outline-none focus:border-[#15803D] font-bold"
+              required
+            />
+          </div>
 
-              <div className="space-y-2 pt-1">
-                <button
-                  className="w-full min-h-[52px] px-4 rounded-lg font-bold text-xs bg-[#16a34a] hover:bg-[#15803d] text-white flex items-center justify-between transition-colors cursor-pointer"
-                  onClick={handleAccept}
-                >
-                  <span>Terapkan harga {formatRupiah(analysis.smartRoundedSellPrice)}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-
-                <button
-                  className="w-full min-h-[48px] px-4 rounded-lg font-semibold text-xs text-[#9ca3af] hover:text-[#f3f4f6] bg-[#18191e] border border-[#262830] hover:border-[#373a46] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  onClick={() => {
-                    setIsOverrideMode(true);
-                    setCustomPriceInput(analysis.smartRoundedSellPrice.toString());
-                  }}
-                >
-                  <SlidersHorizontal className="w-3.5 h-3.5" />
-                  <span>Ketik harga pilihan sendiri</span>
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* Manual Override Form */
-            <form onSubmit={handleCustomSubmit} className="p-3.5 rounded-lg bg-[#131417] border border-[#262830] space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#f3f4f6]">
-                  Ketik Harga Jual Pilihan
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsOverrideMode(false)}
-                  className="text-xs font-semibold text-[#9ca3af] hover:text-[#f3f4f6] cursor-pointer"
-                >
-                  Batal
-                </button>
-              </div>
-
+          {/* Field 5 & 6: Harga Modal & Harga Jual */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Harga Modal (Rp)</label>
               <input
                 type="number"
-                placeholder="Contoh: 3500"
+                value={buyPriceInput}
+                onChange={(e) => setBuyPriceInput(e.target.value)}
+                className="w-full h-[60px] px-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] focus:outline-none focus:border-[#15803D] font-bold"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Harga Jual Rak (Rp)</label>
+              <input
+                type="number"
                 value={customPriceInput}
                 onChange={(e) => setCustomPriceInput(e.target.value)}
-                className="w-full h-[52px] min-h-[52px] px-3 rounded-lg bg-[#18191e] border border-[#262830] text-lg font-extrabold text-[#22c55e] tabular-nums focus:outline-none focus:border-[#16a34a]"
-                autoFocus
+                className="w-full h-[60px] px-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#15803D] focus:outline-none focus:border-[#15803D] font-bold"
+                required
               />
+            </div>
+          </div>
 
-              {parseInt(customPriceInput, 10) > 0 && (
-                <div className="text-xs text-[#f3f4f6] bg-[#18191e] p-2.5 rounded-lg border border-[#262830]">
-                  {(() => {
-                    const price = parseInt(customPriceInput, 10);
-                    const custMargin = ((price - product.buyPrice) / price) * 100;
-                    return (
-                      <div className="flex items-center justify-between tabular-nums">
-                        <span className="text-[#9ca3af]">Margin baru:</span>
-                        <strong className={`font-extrabold ${custMargin >= 10 ? 'text-[#22c55e]' : 'text-[#f87171]'}`}>
-                          {custMargin.toFixed(1)}% (+{formatRupiah(price - product.buyPrice)}/item)
-                        </strong>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
+          {/* Calculated Data: Profit Netto & Margin in massive bold boxes */}
+          <div className="bg-gray-100 p-4 rounded-lg border-2 border-gray-300 flex gap-3 text-[#1A1A1A]">
+            <div className="flex-1">
+              <span className="text-xs font-bold text-gray-600 uppercase">Profit Netto</span>
+              <div className="text-xl font-black text-[#1A1A1A] mt-0.5 tabular-nums">
+                {formatRupiah(computedProfit)}
+              </div>
+            </div>
+            <div className="flex-1">
+              <span className="text-xs font-bold text-gray-600 uppercase">Margin</span>
+              <div className={`text-xl font-black mt-0.5 tabular-nums ${computedMargin >= 15 ? 'text-[#15803D]' : (computedMargin < 5 ? 'text-red-600' : 'text-amber-600')}`}>
+                {computedMargin.toFixed(1)}%
+              </div>
+            </div>
+          </div>
 
-              <button
-                type="submit"
-                className="w-full min-h-[52px] rounded-lg font-bold text-xs bg-[#16a34a] hover:bg-[#15803d] text-white transition-colors cursor-pointer disabled:opacity-50"
-                disabled={!customPriceInput || parseInt(customPriceInput, 10) <= 0}
-              >
-                Simpan harga baru
-              </button>
-            </form>
-          )}
-        </div>
+          {/* Action buttons */}
+          <div className="pt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 min-h-[60px] font-bold text-lg rounded-lg border-2 border-[#1A1A1A] bg-white text-[#1A1A1A] cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              className="flex-1 min-h-[60px] font-bold text-lg rounded-lg bg-[#15803D] hover:bg-[#15803D]/90 text-white cursor-pointer"
+            >
+              Simpan Perubahan
+            </button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
