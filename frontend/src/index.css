@@ -4,46 +4,46 @@
 
 @layer base {
   :root {
-    /* Swiss Style / Warm Rationalism Design Tokens */
-    --background: 228 10% 8%;       /* #131417 Warm Charcoal */
-    --foreground: 220 14% 96%;      /* #f3f4f6 Pure Contrast Off-White */
+    /* Clean Light Mode Design Tokens (Kupa Style) */
+    --background: 210 20% 98%;       /* #F8F9FA Soft Light Gray */
+    --foreground: 220 15% 12%;       /* #1A1D1E Deep Charcoal */
 
-    --card: 228 9% 11%;             /* #18191e Elevated Grid Surface */
-    --card-foreground: 220 14% 96%;
+    --card: 0 0% 100%;               /* #FFFFFF Pure White */
+    --card-foreground: 220 15% 12%;
 
-    --popover: 228 9% 11%;
-    --popover-foreground: 220 14% 96%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 12%;
 
-    --primary: 142 71% 45%;         /* #16a34a Swiss Functional Green */
+    --primary: 151 57% 25%;          /* #1B6440 Deep Forest Green */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 228 8% 16%;        /* #262830 */
-    --secondary-foreground: 220 14% 96%;
+    --secondary: 150 14% 96%;        /* #F4F6F5 */
+    --secondary-foreground: 220 15% 12%;
 
-    --muted: 228 8% 13%;            /* #1f2127 */
-    --muted-foreground: 220 9% 60%; /* #9ca3af */
+    --muted: 150 14% 96%;
+    --muted-foreground: 215 16% 47%; /* #6B7280 */
 
-    --accent: 228 8% 16%;           /* #262830 */
-    --accent-foreground: 220 14% 96%;
+    --accent: 147 38% 94%;          /* #EBF5F0 Soft Sage Green */
+    --accent-foreground: 151 57% 25%;
 
-    --destructive: 0 72% 51%;       /* #dc2626 Swiss Alert Red */
+    --destructive: 0 84% 60%;        /* #EF4444 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 228 8% 16%;           /* #262830 1px Structural Grid Line */
-    --input: 228 8% 16%;
-    --ring: 142 71% 45%;
+    --border: 220 13% 91%;           /* #E5E7EB */
+    --input: 150 14% 96%;            /* #F4F6F5 */
+    --ring: 151 57% 25%;
 
-    --radius: 0.5rem;               /* 8px Swiss Functional Max Radius */
+    --radius: 1rem;                  /* 16px default corner radius */
   }
 }
 
 @layer base {
   * {
-    border-color: #262830;
+    border-color: #E5E7EB;
   }
   body {
-    background-color: #131417;
-    color: #f3f4f6;
+    background-color: #F8F9FA;
+    color: #1A1D1E;
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
     letter-spacing: -0.015em;
@@ -54,39 +54,49 @@
 
   h1, h2, h3, h4 {
     letter-spacing: -0.025em;
+    font-weight: 700;
+    color: #1A1D1E;
   }
 }
 
-/* Swiss Tabular Numbers for all currency & rates */
+/* Tabular Numbers for currency, margins & rates */
 .tabular-nums, p, span, div {
   font-variant-numeric: tabular-nums;
 }
 
 /* Easy Mode Text Magnifier */
 .easy-mode {
-  font-size: 114%;
+  font-size: 112%;
 }
 
 .easy-mode button {
   min-height: 56px !important;
 }
 
-/* 1px Structural Swiss Grid Line */
-.swiss-grid-border {
-  border: 1px solid #262830;
-}
-
-/* Custom Minimalist Scrollbar */
+/* Custom Clean Scrollbar */
 ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #131417;
+  background: #F1F3F5;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #262830;
-  border-radius: 2px;
+  background: #D1D5DB;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* Hide scrollbar for tabs / chips */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

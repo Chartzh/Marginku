@@ -1,61 +1,122 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ProductItem, ShelfScanData, StoreSettings } from '@/types';
 import { demoShelfPresets } from '@/data/mockProducts';
 import { calculateMargin, fuzzyMatchScore } from '@/lib/math';
 import { formatRupiah } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import {
-  Camera,
   Image as ImageIcon,
   AlertOctagon,
   ArrowRight,
   Flashlight,
   Scan,
-  RefreshCw,
+  Sparkles,
+  CheckCircle2,
 } from 'lucide-react';
 import { auditLabelRak } from '@/services/api';
+
+export interface ShelfScanState {
+  shelfData: ShelfScanData;
+  matchedProduct: ProductItem | null;
+  analysis: ReturnType<typeof calculateMargin> | null;
+}
 
 interface ShelfScanViewProps {
   products: ProductItem[];
   settings: StoreSettings;
+  scanResult: ShelfScanState | null;
+  onScanResultChange: (result: ShelfScanState | null) => void;
   onOpenAlertModal: (product: ProductItem) => void;
 }
+
+const AI_AUDIT_STAGES = [
+  'Mengunggah foto etalase toko...',
+  'AI Gemini mendeteksi teks harga di label...',
+  'Mencocokkan nama barang ke katalog nota...',
+  'Menganalisis kalkulasi margin keuntungan...',
+];
 
 export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
   products,
   settings,
+  scanResult,
+  onScanResultChange,
   onOpenAlertModal,
 }) => {
   const [flashlightOn, setFlashlightOn] = useState(false);
-  const [activePresetId, setActivePresetId] = useState<string>(demoShelfPresets[0].id);
-  const [scanResult, setScanResult] = useState<{
-    shelfData: ShelfScanData;
-    matchedProduct: ProductItem | null;
-    analysis: ReturnType<typeof calculateMargin> | null;
-  } | null>(() => {
-    const initial = demoShelfPresets[0];
-    const match = products[0];
-    const calc = calculateMargin(
-      match.buyPrice,
-      initial.detectedPrice,
-      match.targetMarginPercent || settings.defaultTargetMarginPercent,
-      settings.roundingStep,
-      settings.dangerThresholdPercent
-    );
-    return {
-      shelfData: initial,
-      matchedProduct: { ...match, currentSellPrice: initial.detectedPrice },
-      analysis: calc,
-    };
-  });
-
+  const [activePresetId, setActivePresetId] = useState<string>(demoShelfPresets[0]?.id || '');
   const [apiLoading, setApiLoading] = useState(false);
+  const [aiStageIndex, setAiStageIndex] = useState(0);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Initialize scanResult safely if null and products available
+  useEffect(() => {
+    if (!scanResult && products.length > 0) {
+      const initial = demoShelfPresets[0];
+      const match = products[0];
+      if (initial && match) {
+        const calc = calculateMargin(
+          match.buyPrice || 0,
+          initial.detectedPrice || 0,
+          match.targetMarginPercent || settings.defaultTargetMarginPercent,
+          settings.roundingStep,
+          settings.dangerThresholdPercent
+        );
+        onScanResultChange({
+          shelfData: initial,
+          matchedProduct: { ...match, currentSellPrice: initial.detectedPrice },
+          analysis: calc,
+        });
+      }
+    }
+  }, [products, settings, scanResult, onScanResultChange]);
+
+  // Animate AI stages when loading
+  useEffect(() => {
+    let interval: any;
+    if (apiLoading) {
+      setAiStageIndex(0);
+      interval = setInterval(() => {
+        setAiStageIndex((prev) => (prev < AI_AUDIT_STAGES.length - 1 ? prev + 1 : prev));
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [apiLoading]);
+
   const processDetection = (preset: typeof demoShelfPresets[0]) => {
     setActivePresetId(preset.id);
+
+    // Safe handling when products array is empty
+    if (!products || products.length === 0) {
+      const fallbackProd: ProductItem = {
+        id: 'prod-fallback',
+        name: preset.detectedName,
+        category: 'Umum',
+        buyPrice: Math.round(preset.detectedPrice * 0.8),
+        currentSellPrice: preset.detectedPrice,
+        targetMarginPercent: settings.defaultTargetMarginPercent,
+        unit: 'pcs',
+        lastUpdated: new Date().toISOString(),
+      };
+
+      const calc = calculateMargin(
+        fallbackProd.buyPrice,
+        preset.detectedPrice,
+        settings.defaultTargetMarginPercent,
+        settings.roundingStep,
+        settings.dangerThresholdPercent
+      );
+
+      onScanResultChange({
+        shelfData: preset,
+        matchedProduct: fallbackProd,
+        analysis: calc,
+      });
+      return;
+    }
 
     let bestMatch: ProductItem | null = null;
     let highestScore = 0;
@@ -86,7 +147,7 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
         settings.dangerThresholdPercent
       );
 
-      setScanResult({
+      onScanResultChange({
         shelfData: preset,
         matchedProduct: updatedMatch,
         analysis,
@@ -102,22 +163,24 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
     setApiError(null);
 
     try {
-      const result = await auditLabelRak(file);
+      const result = await auditLabelRak(file, settings.defaultTargetMarginPercent);
       if (result.status === 'success') {
-        // Cari ProductItem di products yang namanya paling cocok dengan nama_di_nota
-        const matched =
-          products.find(
-            (p) => p.name.toLowerCase() === result.nama_di_nota.toLowerCase()
-          ) ??
-          products.find((p) =>
-            p.name.toLowerCase().includes(result.nama_di_nota.toLowerCase().split(' ')[0])
-          ) ??
-          null;
+        // Safe matching with products array
+        const matched = products && products.length > 0
+          ? products.find(
+              (p) => p.name.toLowerCase() === result.nama_di_nota?.toLowerCase()
+            ) ??
+            products.find((p) =>
+              result.nama_di_nota &&
+              p.name.toLowerCase().includes(result.nama_di_nota.toLowerCase().split(' ')[0])
+            ) ??
+            null
+          : null;
 
         const fakeProduct: ProductItem = {
-          id: matched?.id ?? 'api-result',
-          name: result.nama_label_rak,
-          category: matched?.category ?? 'Produk Terdeteksi',
+          id: matched?.id ?? 'api-result-' + Date.now(),
+          name: result.nama_label_rak || 'Produk Terdeteksi',
+          category: matched?.category ?? 'Umum',
           buyPrice: result.harga_modal,
           currentSellPrice: result.harga_rak,
           targetMarginPercent: matched?.targetMarginPercent ?? settings.defaultTargetMarginPercent,
@@ -133,7 +196,7 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
           settings.dangerThresholdPercent
         );
 
-        setScanResult({
+        onScanResultChange({
           shelfData: {
             id: 'api-' + Date.now(),
             detectedName: result.nama_label_rak,
@@ -147,6 +210,8 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
         setActivePresetId('');
       } else if (result.status === 'not_found') {
         setApiError('Produk tidak ditemukan di database nota. Scan nota supplier terlebih dahulu.');
+      } else {
+        setApiError(result.pesan || 'Gagal memproses label rak');
       }
     } catch (err: unknown) {
       setApiError(err instanceof Error ? err.message : 'Gagal menghubungi server AI');
@@ -156,68 +221,131 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
   };
 
   return (
-    <div className="space-y-4 pb-24 text-[#f3f4f6] font-sans">
-      {/* Swiss Style Title Header */}
-      <div className="border-b border-[#262830] pb-2">
-        <h1 className="text-xl font-extrabold text-[#f3f4f6] tracking-tight">
-          Pemeriksaan Label Rak
-        </h1>
-        <p className="text-xs text-[#9ca3af] mt-0.5">
-          Arahkan kamera ke label harga barang di etalase toko
-        </p>
-      </div>
+    <div className="pb-24 text-[#1A1A1A] font-sans" style={{ backgroundColor: '#FFFFFF', minHeight: '100%' }}>
 
-      {/* Swiss Functional Viewfinder Area */}
-      <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden bg-[#18191e] border border-[#262830] flex flex-col justify-between p-3">
-        {/* Top Controls */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#131417] text-xs font-bold text-[#f3f4f6] border border-[#262830]">
-            <span className="w-2 h-2 rounded-full bg-[#16a34a]" />
-            <span>Kamera Pemindai</span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setFlashlightOn(!flashlightOn)}
-              aria-label="Senter"
-              className={`p-2 rounded border transition-colors cursor-pointer ${
-                flashlightOn
-                  ? 'bg-amber-500 text-black border-amber-500 font-bold'
-                  : 'bg-[#131417] text-[#f3f4f6] border-[#262830] hover:border-[#373a46]'
-              }`}
-            >
-              <Flashlight className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="Pilih Foto Galeri"
-              className="p-2 rounded bg-[#131417] text-[#f3f4f6] border border-[#262830] hover:border-[#373a46] transition-colors cursor-pointer"
-            >
-              <ImageIcon className="w-4 h-4" />
-            </button>
+      {/* ── GREEN APP BAR ── */}
+      <div style={{ backgroundColor: '#15803D' }} className="px-4 pt-4 pb-5">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 style={{ fontSize: 28, fontWeight: 900, color: '#FFFFFF', lineHeight: 1.1, letterSpacing: '-0.03em' }}>
+              Scan Rak
+            </h1>
+            <p style={{ fontSize: 16, color: '#BBF7D0', fontWeight: 500, marginTop: 3 }}>
+              Periksa harga label etalase toko
+            </p>
           </div>
         </div>
+      </div>
 
-        {/* Center Reticle Focus Area */}
-        <div className="my-auto flex flex-col items-center justify-center">
-          <div className="w-64 h-24 rounded border border-[#373a46] bg-[#131417] flex flex-col items-center justify-center p-3 text-center">
+      <div className="px-4 pt-4 space-y-4">
+
+        {/* ── VIEWFINDER CARD ── */}
+        <div className="relative w-full rounded-3xl bg-[#1A1D1E] overflow-hidden shadow-lg" style={{ minHeight: 180 }}>
+          {/* Top bar */}
+          <div className="flex items-center justify-between px-4 pt-4">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15">
+              <span className="w-2 h-2 rounded-full bg-[#86D6BE] animate-pulse" />
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#86D6BE' }}>Kamera Pemindai</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setFlashlightOn(!flashlightOn)}
+                aria-label="Senter"
+                style={{ width: 40, height: 40 }}
+                className={`rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                  flashlightOn
+                    ? 'bg-[#F59E0B] text-black shadow-md'
+                    : 'bg-white/15 text-white hover:bg-white/25 border border-white/10'
+                }`}
+              >
+                <Flashlight className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="Pilih Foto Galeri"
+                style={{ width: 40, height: 40 }}
+                className="rounded-full bg-white/15 text-white hover:bg-white/25 border border-white/10 flex items-center justify-center transition-all cursor-pointer"
+              >
+                <ImageIcon className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Center — 3 states: idle / loading / has-result */}
+          <div
+            className="flex flex-col items-center justify-center py-5 cursor-pointer select-none"
+            onClick={() => !apiLoading && fileInputRef.current?.click()}
+            role="button"
+            aria-label="Buka kamera untuk scan label rak"
+          >
             {apiLoading ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin text-[#22c55e]" />
-                <span className="text-[10px] text-[#9ca3af] font-bold uppercase tracking-wider mt-1">
-                  AI menganalisis...
+              /* STATE 2: AI Loading */
+              <div className="relative rounded-2xl bg-black/40 backdrop-blur-sm border border-white/20 flex flex-col items-center justify-center p-5 text-center"
+                style={{ width: 260, minHeight: 100 }}>
+                <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#86D6BE] rounded-tl-lg" />
+                <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#86D6BE] rounded-tr-lg" />
+                <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#86D6BE] rounded-bl-lg" />
+                <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#86D6BE] rounded-br-lg" />
+                <div className="flex items-center justify-center gap-2 text-[#86D6BE] mb-2">
+                  <Sparkles className="w-4 h-4 animate-spin" />
+                  <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em' }}>MEMINDAI AI...</span>
+                </div>
+                <p style={{ fontSize: 13, color: '#FFFFFF', fontWeight: 500, maxWidth: 200 }} className="truncate mb-2">
+                  {AI_AUDIT_STAGES[aiStageIndex]}
+                </p>
+                <div className="w-full bg-white/20 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#86D6BE] transition-all duration-500 rounded-full"
+                    style={{ width: `${((aiStageIndex + 1) / AI_AUDIT_STAGES.length) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ) : scanResult?.shelfData ? (
+              /* STATE 3: Has Result */
+              <div className="relative rounded-2xl bg-black/40 backdrop-blur-sm border border-white/20 flex flex-col items-center justify-center p-4 text-center"
+                style={{ width: 260, minHeight: 90 }}>
+                <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#86D6BE] rounded-tl-lg" />
+                <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#86D6BE] rounded-tr-lg" />
+                <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#86D6BE] rounded-bl-lg" />
+                <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#86D6BE] rounded-br-lg" />
+                <span style={{ fontSize: 10, color: '#86D6BE', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 6 }}>
+                  ✓ TERDETEKSI
                 </span>
-              </>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#15803D]/80 border border-[#86D6BE]/40 text-white shadow-sm max-w-[220px]"
+                  style={{ fontSize: 13, fontWeight: 700 }}>
+                  <Scan className="w-4 h-4 shrink-0 text-[#86D6BE]" />
+                  <span className="truncate">{scanResult.shelfData.detectedName}</span>
+                </div>
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 6, fontWeight: 500 }}>
+                  Tap di sini untuk scan ulang
+                </span>
+              </div>
             ) : (
-              <>
-                <Scan className="w-5 h-5 text-[#16a34a] mb-1 opacity-90" />
-                <span className="text-[10px] text-[#9ca3af] font-bold uppercase tracking-wider">
-                  Posisikan Label Rak di Sini
-                </span>
-                <span className="text-xs font-bold text-[#f3f4f6] mt-0.5 truncate max-w-[220px]">
-                  {scanResult ? scanResult.shelfData.detectedName : 'Menunggu target label...'}
-                </span>
-              </>
+              /* STATE 1: Idle — belum pernah scan */
+              <div className="flex flex-col items-center gap-3 py-2">
+                <div
+                  className="rounded-full border-2 border-dashed border-[#86D6BE]/60 flex items-center justify-center"
+                  style={{ width: 72, height: 72, backgroundColor: 'rgba(134,214,190,0.1)' }}
+                >
+                  <ImageIcon style={{ width: 32, height: 32, color: '#86D6BE' }} />
+                </div>
+                <div className="text-center space-y-1">
+                  <p style={{ fontSize: 16, fontWeight: 800, color: '#FFFFFF' }}>
+                    Tap untuk buka kamera
+                  </p>
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
+                    Pilih foto label harga dari galeri atau kamera
+                  </p>
+                </div>
+                <div
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full"
+                  style={{ backgroundColor: '#15803D', fontSize: 14, fontWeight: 700, color: '#FFFFFF' }}
+                >
+                  <Scan className="w-4 h-4" />
+                  <span>Mulai Scan</span>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -232,155 +360,150 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
           className="hidden"
         />
 
-        {/* Bottom Status Grid */}
-        <div className="flex items-center justify-between text-xs text-[#9ca3af] border-t border-[#262830] pt-1.5 px-0.5 font-medium">
-          <span>Mode: Otomatis</span>
-          <span className="text-[#f3f4f6] font-bold tabular-nums">Akurasi 98.4%</span>
-        </div>
-      </div>
-
-      {/* Error Message if API Error */}
-      {apiError && (
-        <div className="text-xs text-[#f87171] font-bold px-1 py-2">
-          {apiError}
-        </div>
-      )}
-
-      {/* Preset Chips (Swiss Horizontal Row) */}
-      <div className="space-y-1.5">
-        <span className="text-xs font-bold text-[#9ca3af] block">
-          Pilih sampel label rak fisik:
-        </span>
-
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {demoShelfPresets.map((preset) => {
-            const isSelected = preset.id === activePresetId;
-            return (
-              <button
-                key={preset.id}
-                onClick={() => processDetection(preset)}
-                className={`px-3 py-2 rounded-lg border shrink-0 transition-colors text-xs text-left cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#262830] border-[#373a46] text-[#f3f4f6] font-bold'
-                    : 'bg-[#18191e] border-[#262830] text-[#9ca3af] hover:border-[#373a46] hover:text-[#f3f4f6]'
-                }`}
-              >
-                <div className="truncate max-w-[140px] font-bold">{preset.detectedName}</div>
-                <div className="text-[11px] text-[#9ca3af] mt-0.5 tabular-nums">
-                  Rak: <strong className="text-[#22c55e] font-bold">{formatRupiah(preset.detectedPrice)}</strong>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Swiss Financial Diagnosis Panel */}
-      {scanResult && scanResult.matchedProduct && scanResult.analysis && (
-        <div
-          className={`rounded-lg p-4 border transition-colors space-y-3 ${
-            scanResult.analysis.status === 'DANGER'
-              ? 'bg-[#18191e] border-[#b91c1c]'
-              : scanResult.analysis.status === 'WARNING'
-              ? 'bg-[#18191e] border-[#b45309]'
-              : 'bg-[#18191e] border-[#262830]'
-          }`}
-        >
-          {/* Header Row */}
-          <div className="flex items-start justify-between gap-2 border-b border-[#262830] pb-3">
-            <div>
-              <span className="text-[10px] text-[#9ca3af] font-bold uppercase tracking-wider block">
-                Barang Terdeteksi
-              </span>
-              <h2 className="text-base font-extrabold text-[#f3f4f6] mt-0.5">
-                {scanResult.matchedProduct.name}
-              </h2>
-            </div>
-
-            {/* Triple-Redundancy Badge */}
-            <div className="text-right">
-              <span
-                className={`px-2.5 py-1 rounded text-xs font-bold inline-flex items-center gap-1 tabular-nums ${
-                  scanResult.analysis.status === 'DANGER'
-                    ? 'bg-[#3b181b] text-[#f87171] border border-[#b91c1c]'
-                    : scanResult.analysis.status === 'WARNING'
-                    ? 'bg-[#3d2612] text-[#fbbf24] border border-[#b45309]'
-                    : 'bg-[#142e1f] text-[#22c55e] border border-[#166534]'
-                }`}
-              >
-                <AlertOctagon className="w-3.5 h-3.5" />
-                {scanResult.analysis.status === 'DANGER'
-                  ? 'Jual rugi'
-                  : scanResult.analysis.status === 'WARNING'
-                  ? 'Untung tipis'
-                  : 'Margin aman'}
-              </span>
-              <div className="text-xs font-bold text-[#f3f4f6] mt-1 tabular-nums">
-                Rak: {formatRupiah(scanResult.shelfData.detectedPrice)}
-              </div>
-            </div>
+        {/* ── ERROR BANNER ── */}
+        {apiError && (
+          <div className="font-bold px-4 py-4 rounded-2xl bg-[#FEE2E2] border-2 border-[#FECACA] flex items-start gap-3">
+            <AlertOctagon style={{ width: 22, height: 22, color: '#DC2626', flexShrink: 0, marginTop: 2 }} />
+            <span style={{ fontSize: 16, color: '#DC2626', fontWeight: 700 }}>{apiError}</span>
           </div>
+        )}
 
-          {/* 3-Column Numbers Grid (Swiss Tabular Numbers) */}
-          <div className="grid grid-cols-3 gap-2 p-3 rounded bg-[#131417] border border-[#262830]">
-            <div>
-              <span className="text-[10px] text-[#9ca3af] block font-medium">Modal Kulakan</span>
-              <div className="text-sm font-bold text-[#f3f4f6] mt-0.5 tabular-nums">
-                {formatRupiah(scanResult.matchedProduct.buyPrice)}
-              </div>
-            </div>
-            <div>
-              <span className="text-[10px] text-[#9ca3af] block font-medium">Margin Aktif</span>
-              <div
-                className={`text-sm font-extrabold mt-0.5 tabular-nums ${
-                  scanResult.analysis.status === 'DANGER'
-                    ? 'text-[#f87171]'
-                    : scanResult.analysis.status === 'WARNING'
-                    ? 'text-[#fbbf24]'
-                    : 'text-[#22c55e]'
-                }`}
-              >
-                {scanResult.analysis.activeMarginPercent.toFixed(1)}%
-              </div>
-            </div>
-            <div>
-              <span className="text-[10px] text-[#9ca3af] block font-medium">Saran Harga</span>
-              <div className="text-sm font-extrabold text-[#22c55e] mt-0.5 tabular-nums">
-                {formatRupiah(scanResult.analysis.smartRoundedSellPrice)}
-              </div>
-            </div>
+        {/* ── SAMPLE CHIPS ── */}
+        <div className="space-y-3">
+          <label style={{ fontSize: 15, fontWeight: 700, color: '#6B7280', display: 'block' }}>
+            Pilih sampel label rak fisik:
+          </label>
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {demoShelfPresets.map((preset) => {
+              const isSelected = preset.id === activePresetId;
+              return (
+                <button
+                  key={preset.id}
+                  onClick={() => processDetection(preset)}
+                  className="active:scale-95"
+                  style={{
+                    height: 52,
+                    paddingLeft: 16,
+                    paddingRight: 16,
+                    borderRadius: 999,
+                    fontSize: 14,
+                    fontWeight: 700,
+                    backgroundColor: isSelected ? '#15803D' : '#FFFFFF',
+                    color: isSelected ? '#FFFFFF' : '#1A1A1A',
+                    border: isSelected ? 'none' : '2px solid #E5E7EB',
+                    whiteSpace: 'nowrap',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    flexShrink: 0,
+                    boxShadow: isSelected ? '0 2px 8px rgba(0,0,0,0.15)' : '0 1px 3px rgba(0,0,0,0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <span>{preset.detectedName}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: isSelected ? 'rgba(255,255,255,0.75)' : '#6B7280' }}>
+                    {formatRupiah(preset.detectedPrice)}
+                  </span>
+                </button>
+              );
+            })}
           </div>
+        </div>
 
-          {/* Swiss Solid Action Button (Min Height 52px) */}
-          <button
-            onClick={() => {
-              if (scanResult.matchedProduct) {
-                onOpenAlertModal(scanResult.matchedProduct);
-              }
-            }}
-            className={`w-full min-h-[52px] px-4 rounded-lg font-bold text-xs flex items-center justify-between transition-colors cursor-pointer ${
-              scanResult.analysis.status === 'DANGER'
-                ? 'bg-[#dc2626] hover:bg-[#b91c1c] text-white'
-                : 'bg-[#16a34a] hover:bg-[#15803d] text-white'
-            }`}
-          >
-            {scanResult.analysis.status === 'DANGER' ? (
-              <>
+        {/* ── SCAN RESULT CARD ── */}
+        {scanResult && scanResult.matchedProduct && scanResult.analysis && (() => {
+          const { matchedProduct: mp, analysis: an, shelfData: sd } = scanResult;
+          const statusColor =
+            an.status === 'DANGER'
+              ? { text: '#DC2626', badgeBg: '#FEE2E2', border: '#FECACA', label: 'Rugi' }
+              : an.status === 'WARNING'
+              ? { text: '#B45309', badgeBg: '#FEF3C7', border: '#FDE68A', label: 'Tipis' }
+              : { text: '#15803D', badgeBg: '#DCFCE7', border: '#BBF7D0', label: 'Aman' };
+
+          return (
+            <div
+              className="rounded-3xl overflow-hidden bg-white"
+              style={{ border: `2px solid ${statusColor.border}`, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+            >
+              {/* Status header stripe */}
+              <div className="px-5 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <AlertOctagon className="w-4 h-4" />
-                  <span>Amankan margin (ubah ke {formatRupiah(scanResult.analysis.smartRoundedSellPrice)})</span>
+                  {an.status === 'HEALTHY'
+                    ? <CheckCircle2 style={{ width: 18, height: 18, color: statusColor.text }} />
+                    : <AlertOctagon style={{ width: 18, height: 18, color: statusColor.text }} />}
+                  <span style={{ fontSize: 15, fontWeight: 800, color: statusColor.text }}>
+                    {statusColor.label} - Margin {an.activeMarginPercent.toFixed(1)}%
+                  </span>
                 </div>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            ) : (
-              <>
-                <span>Lihat rekomendasi harga toko</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
-        </div>
-      )}
+                <span
+                  className="tabular-nums"
+                  style={{
+                    fontSize: 13, fontWeight: 700, color: statusColor.text,
+                    backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 999,
+                    paddingLeft: 10, paddingRight: 10, paddingTop: 4, paddingBottom: 4,
+                    border: `1px solid ${statusColor.border}`,
+                  }}
+                >
+                  Rak: {formatRupiah(sd.detectedPrice)}
+                </span>
+              </div>
+
+              <div className="px-5 py-4 space-y-4">
+                {/* Product name + category */}
+                <div>
+                  <h2 style={{ fontSize: 22, fontWeight: 900, color: '#1A1A1A', lineHeight: 1.2 }}>
+                    {mp.name}
+                  </h2>
+                  <p style={{ fontSize: 15, color: '#6B7280', fontWeight: 500, marginTop: 4 }}>
+                    Kategori: <strong style={{ color: '#1A1A1A', fontWeight: 700 }}>{mp.category}</strong>
+                  </p>
+                </div>
+
+                {/* Financial metrics 3-column */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-2xl p-3 border">
+                    <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>Modal</span>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: '#1A1A1A' }} className="tabular-nums">
+                      {formatRupiah(mp.buyPrice)}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl p-3" style={{ border: `1px solid ${statusColor.border}` }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: statusColor.text, display: 'block', marginBottom: 4 }}>Margin</span>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: statusColor.text }} className="tabular-nums">
+                      {an.activeMarginPercent.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div className="rounded-2xl p-3 border border-green-200">
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#15803D', display: 'block', marginBottom: 4 }}>Saran Harga</span>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: '#15803D' }} className="tabular-nums">
+                      {formatRupiah(an.smartRoundedSellPrice)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* CTA Button */}
+                <button
+                  onClick={() => { if (scanResult.matchedProduct) onOpenAlertModal(scanResult.matchedProduct); }}
+                  style={{ height: 60, fontSize: 17, fontWeight: 800, borderRadius: 16 }}
+                  className="w-full bg-[#15803D] hover:bg-[#166534] text-white flex items-center justify-between px-5 transition-all cursor-pointer shadow-md active:scale-[0.98] group"
+                >
+                  <span>
+                    {an.status === 'DANGER'
+                      ? `Amankan margin (ubah ke ${formatRupiah(an.smartRoundedSellPrice)})`
+                      : `Amankan margin etalase (${formatRupiah(an.smartRoundedSellPrice)})`}
+                  </span>
+                  <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-1 transition-transform shrink-0">
+                    <ArrowRight className="w-5 h-5 text-white" />
+                  </div>
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+      </div>
     </div>
   );
 };
+
