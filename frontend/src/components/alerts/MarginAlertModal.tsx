@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { ProductItem, StoreSettings } from '@/types';
-import { calculateMargin } from '@/lib/math';
 import { formatRupiah } from '@/lib/utils';
 import {
   Dialog,
@@ -8,14 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  AlertOctagon,
-  AlertTriangle,
-  ArrowRight,
-  CheckCircle2,
-  SlidersHorizontal,
-  Pencil,
-} from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface MarginAlertModalProps {
@@ -40,7 +31,6 @@ export const MarginAlertModal: React.FC<MarginAlertModalProps> = ({
   isOpen,
   onClose,
   product,
-  onAcceptPrice,
   onOverridePrice,
 }) => {
   const [nameInput, setNameInput] = useState('');

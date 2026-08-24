@@ -4,46 +4,46 @@
 
 @layer base {
   :root {
-    /* Warung Profit Optimizer Design Tokens */
-    --background: 160 14% 8%;       /* #121816 Charcoal Background */
-    --foreground: 120 3% 89%;       /* #e0e3e0 On-Surface */
+    /* Clean Light Mode Design Tokens (Kupa Style) */
+    --background: 210 20% 98%;       /* #F8F9FA Soft Light Gray */
+    --foreground: 220 15% 12%;       /* #1A1D1E Deep Charcoal */
 
-    --card: 165 17% 13%;             /* #1B2724 Teal-Slate Surface */
-    --card-foreground: 120 3% 89%;
+    --card: 0 0% 100%;               /* #FFFFFF Pure White */
+    --card-foreground: 220 15% 12%;
 
-    --popover: 165 17% 13%;
-    --popover-foreground: 120 3% 89%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 12%;
 
-    --primary: 160 84% 39%;         /* #10B981 Emerald Green */
+    --primary: 151 57% 25%;          /* #1B6440 Deep Forest Green */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 165 17% 13%;        /* #1B2724 Teal-Slate */
-    --secondary-foreground: 120 3% 89%;
+    --secondary: 150 14% 96%;        /* #F4F6F5 */
+    --secondary-foreground: 220 15% 12%;
 
-    --muted: 165 6% 12%;            /* #1c201f */
-    --muted-foreground: 153 7% 76%; /* #bec9c4 */
+    --muted: 150 14% 96%;
+    --muted-foreground: 215 16% 47%; /* #6B7280 */
 
-    --accent: 165 17% 13%;           /* #1B2724 */
-    --accent-foreground: 120 3% 89%;
+    --accent: 147 38% 94%;          /* #EBF5F0 Soft Sage Green */
+    --accent-foreground: 151 57% 25%;
 
-    --destructive: 0 72% 51%;       /* #DC2626 Crimson Red */
+    --destructive: 0 84% 60%;        /* #EF4444 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 156 8% 26%;           /* #3f4945 Outline-Variant */
-    --input: 156 8% 26%;
-    --ring: 160 84% 39%;
+    --border: 220 13% 91%;           /* #E5E7EB */
+    --input: 150 14% 96%;            /* #F4F6F5 */
+    --ring: 151 57% 25%;
 
-    --radius: 0.5rem;               /* 8px radius */
+    --radius: 1rem;                  /* 16px default corner radius */
   }
 }
 
 @layer base {
   * {
-    border-color: #3f4945;
+    border-color: #E5E7EB;
   }
   body {
-    background-color: #121816;
-    color: #e0e3e0;
+    background-color: #F8F9FA;
+    color: #1A1D1E;
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
     letter-spacing: -0.015em;
@@ -54,39 +54,49 @@
 
   h1, h2, h3, h4 {
     letter-spacing: -0.025em;
+    font-weight: 700;
+    color: #1A1D1E;
   }
 }
 
-/* Swiss Tabular Numbers for all currency & rates */
+/* Tabular Numbers for currency, margins & rates */
 .tabular-nums, p, span, div {
   font-variant-numeric: tabular-nums;
 }
 
 /* Easy Mode Text Magnifier */
 .easy-mode {
-  font-size: 114%;
+  font-size: 112%;
 }
 
 .easy-mode button {
   min-height: 56px !important;
 }
 
-/* 1px Structural Swiss Grid Line */
-.swiss-grid-border {
-  border: 1px solid #3f4945;
-}
-
-/* Custom Minimalist Scrollbar */
+/* Custom Clean Scrollbar */
 ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #121816;
+  background: #F1F3F5;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3f4945;
-  border-radius: 2px;
+  background: #D1D5DB;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* Hide scrollbar for tabs / chips */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

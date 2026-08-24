@@ -1,4 +1,6 @@
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+import { supabase } from '@/lib/supabase';
+
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Types response dari backend
 export type NotaItem = {
@@ -10,14 +12,15 @@ export type NotaItem = {
 
 export type ScanNotaResponse = {
   status: string;
-  items_berhasil: number;
+  items_berhasil?: number;
+  items_ditambahkan?: number;
   total_katalog: number;
-  supplier: string | null;
-  tanggal: string | null;
+  supplier?: string | null;
+  tanggal?: string | null;
   detail: {
     items: NotaItem[];
-    supplier: string | null;
-    tanggal: string | null;
+    supplier?: string | null;
+    tanggal?: string | null;
   };
 };
 
@@ -46,6 +49,28 @@ export type ResetKatalogResponse = {
   status: string;
   pesan: string;
 };
+
+/**
+ * Helper internal untuk menambahkan header Authorization: Bearer <token>
+ */
+async function getAuthHeaders(options?: { isJson?: boolean }): Promise<HeadersInit> {
+  const headers: Record<string, string> = {};
+
+  if (options?.isJson) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+  } catch (err) {
+    console.error('Gagal mengambil token Supabase:', err);
+  }
+
+  return headers;
+}
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -79,10 +104,13 @@ async function handleResponse<T>(response: Response): Promise<T> {
  */
 export async function scanNota(file: File): Promise<ScanNotaResponse> {
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append('file', file);
+
+  const authHeaders = await getAuthHeaders();
 
   const response = await fetch(`${BASE_URL}/api/v1/scan/nota`, {
-    method: "POST",
+    method: 'POST',
+    headers: authHeaders,
     body: formData,
   });
 
@@ -98,15 +126,18 @@ export async function auditLabelRak(
   targetMargin?: number
 ): Promise<AuditLabelResponse> {
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append('file', file);
 
   const url = new URL(`${BASE_URL}/api/v1/scan/label-rak`);
   if (targetMargin !== undefined) {
-    url.searchParams.append("target_margin", targetMargin.toString());
+    url.searchParams.append('target_margin', targetMargin.toString());
   }
 
+  const authHeaders = await getAuthHeaders();
+
   const response = await fetch(url.toString(), {
-    method: "POST",
+    method: 'POST',
+    headers: authHeaders,
     body: formData,
   });
 
@@ -117,22 +148,28 @@ export async function auditLabelRak(
  * Mengambil daftar seluruh produk dalam katalog.
  * GET /api/v1/katalog
  */
-export async function getKatalog(): Promise<{ total: number; produk: Record<string, number> }> {
+export async function getKatalog(): Promise<KatalogResponse> {
+  const authHeaders = await getAuthHeaders();
+
   const response = await fetch(`${BASE_URL}/api/v1/katalog`, {
-    method: "GET",
+    method: 'GET',
+    headers: authHeaders,
   });
 
-  return handleResponse<{ total: number; produk: Record<string, number> }>(response);
+  return handleResponse<KatalogResponse>(response);
 }
 
 /**
  * Reset/mengosongkan data katalog produk.
  * DELETE /api/v1/katalog/reset
  */
-export async function resetKatalog(): Promise<{ status: string; pesan: string }> {
+export async function resetKatalog(): Promise<ResetKatalogResponse> {
+  const authHeaders = await getAuthHeaders();
+
   const response = await fetch(`${BASE_URL}/api/v1/katalog/reset`, {
-    method: "DELETE",
+    method: 'DELETE',
+    headers: authHeaders,
   });
 
-  return handleResponse<{ status: string; pesan: string }>(response);
+  return handleResponse<ResetKatalogResponse>(response);
 }

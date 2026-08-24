@@ -3,16 +3,17 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-bold transition-colors select-none tabular-nums',
+  'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold transition-colors select-none tabular-nums',
   {
     variants: {
       variant: {
-        default: 'border-[#262830] bg-[#18191e] text-[#f3f4f6]',
-        secondary: 'border-[#262830] bg-[#131417] text-[#9ca3af]',
-        outline: 'border-[#262830] text-[#f3f4f6]',
-        safe: 'border-[#166534] bg-[#142e1f] text-[#22c55e]',
-        warning: 'border-[#b45309] bg-[#3d2612] text-[#fbbf24]',
-        danger: 'border-[#b91c1c] bg-[#3b181b] text-[#f87171]',
+        default: 'bg-[#F4F6F5] text-[#1A1D1E] border border-[#E5E7EB]',
+        secondary: 'bg-[#F8F9FA] text-[#6B7280] border border-[#E5E7EB]',
+        outline: 'border border-[#E5E7EB] bg-white text-[#1A1D1E]',
+        safe: 'bg-[#EBF5F0] text-[#1B6440] border border-[#D1E7DD]',
+        warning: 'bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]',
+        danger: 'bg-[#FEE2E2] text-[#DC2626] border border-[#FECACA]',
+        brand: 'bg-[#1B6440] text-white',
       },
     },
     defaultVariants: {

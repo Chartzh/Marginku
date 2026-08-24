@@ -23,6 +23,8 @@ interface CatalogViewProps {
   settings: StoreSettings;
   onOpenAlertModal: (product: ProductItem) => void;
   onAddNewProduct?: (newProduct: Omit<ProductItem, 'id' | 'lastUpdated'>) => void;
+  onUpdateProduct?: (productId: string, updates: Partial<ProductItem>) => void;
+  onNavigateToScanReceipt?: () => void;
   onDeleteProducts?: (productIds: string[]) => void;
 }
 
@@ -150,7 +152,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
               className="min-h-[60px] px-5 rounded-lg bg-white text-[#15803D] hover:bg-white/95 font-extrabold text-lg flex items-center gap-2 transition-colors cursor-pointer border-2 border-white shadow"
             >
               <Plus className="w-5 h-5 stroke-[3]" />
-              <span>+ Tambah Produk</span>
+              <span>Tambah Produk</span>
             </button>
           )}
         </div>
