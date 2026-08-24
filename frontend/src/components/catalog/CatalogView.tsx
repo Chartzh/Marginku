@@ -9,8 +9,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   Package,
-  FileText,
-  ChevronRight,
   Trash2,
 } from 'lucide-react';
 import {
@@ -30,22 +28,16 @@ interface CatalogViewProps {
   onDeleteProducts?: (productIds: string[]) => void;
 }
 
-const STATUS_LABEL: Record<MarginStatus, string> = {
-  DANGER: 'Rugi',
-  WARNING: 'Tipis',
-  HEALTHY: 'Aman',
-};
-
 export const CatalogView: React.FC<CatalogViewProps> = ({
   products,
   settings,
   onOpenAlertModal,
   onAddNewProduct,
-  onNavigateToScanReceipt,
   onDeleteProducts,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | MarginStatus>('ALL');
+  const [dateFilter, setDateFilter] = useState('');
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -63,6 +55,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
     let dangerCount = 0;
     let warningCount = 0;
     let healthyCount = 0;
+
     products.forEach((p) => {
       const calc = calculateMargin(
         p.buyPrice,
@@ -75,6 +68,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
       else if (calc.status === 'WARNING') warningCount++;
       else healthyCount++;
     });
+
     return { dangerCount, warningCount, healthyCount };
   }, [products, settings]);
 
@@ -83,9 +77,18 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
       const matchesSearch =
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.category.toLowerCase().includes(searchQuery.toLowerCase());
+
       if (!matchesSearch) return false;
 
+      let matchesDate = true;
+      if (dateFilter && p.lastUpdated) {
+        const productDate = p.lastUpdated.split('T')[0];
+        matchesDate = productDate === dateFilter;
+      }
+      if (!matchesDate) return false;
+
       if (statusFilter === 'ALL') return true;
+
       const calc = calculateMargin(
         p.buyPrice,
         p.currentSellPrice,
@@ -93,14 +96,15 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
         settings.roundingStep,
         settings.dangerThresholdPercent
       );
+
       return calc.status === statusFilter;
     });
-  }, [products, searchQuery, statusFilter, settings]);
+  }, [products, searchQuery, statusFilter, dateFilter, settings]);
 
   const handleCreateProduct = (e: React.FormEvent) => {
     e.preventDefault();
-    const buyNum = parseFloat(buyPrice);
-    const sellNum = parseFloat(currentSellPrice);
+    const buyNum = parseInt(buyPrice.replace(/\D/g, ''), 10);
+    const sellNum = parseInt(currentSellPrice.replace(/\D/g, ''), 10);
 
     if (name && buyNum > 0 && sellNum > 0 && onAddNewProduct) {
       onAddNewProduct({
@@ -122,330 +126,263 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
     }
   };
 
+  // Realtime calculated values in the Add Product form
   const parsedBuyPrice = parseInt(buyPrice.replace(/\D/g, ''), 10) || 0;
   const parsedSellPrice = parseInt(currentSellPrice.replace(/\D/g, ''), 10) || 0;
   const computedProfit = parsedSellPrice - parsedBuyPrice;
   const computedMargin = parsedSellPrice > 0 ? (computedProfit / parsedSellPrice) * 100 : 0;
 
   return (
-    <div className="pb-24 text-[#1A1A1A] font-sans" style={{ backgroundColor: '#FFFFFF', minHeight: '100%' }}>
-      {/* ── GREEN APP BAR ── */}
-      <div style={{ backgroundColor: '#15803D' }} className="px-4 pt-4 pb-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 style={{ fontSize: 28, fontWeight: 900, color: '#FFFFFF', lineHeight: 1.1, letterSpacing: '-0.03em' }}>
-              Marginku
-            </h1>
-            <p style={{ fontSize: 16, color: '#BBF7D0', fontWeight: 500, marginTop: 3 }}>
-              {settings.storeName || 'Warung Berkah Jaya'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {onDeleteProducts && products.length > 0 && (
+    <div className="space-y-6 pb-28 text-[#1A1A1A] font-sans bg-white min-h-screen">
+      {/* 1. Header Area */}
+      <div className="-mx-4 -mt-4 mb-6 bg-[#15803D] p-5 text-white flex items-center justify-between shadow-md">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-white leading-none">
+            Marginku
+          </h1>
+          <p className="text-lg font-medium text-white/90 mt-1">
+            Warung Berkah Jaya
+          </p>
+        </div>
+
+        <div>
+          {!isDeleteMode && onAddNewProduct && (
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="min-h-[60px] px-5 rounded-lg bg-white text-[#15803D] hover:bg-white/95 font-extrabold text-lg flex items-center gap-2 transition-colors cursor-pointer border-2 border-white shadow"
+            >
+              <Plus className="w-5 h-5 stroke-[3]" />
+              <span>Tambah Produk</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 2. Filter Pills Area */}
+      <div className="flex w-full gap-2 overflow-x-auto pb-2 scrollbar-none select-none">
+        <button
+          onClick={() => setStatusFilter('ALL')}
+          className={`min-h-[60px] px-6 rounded-lg font-black text-lg transition-colors cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap border-2 ${
+            statusFilter === 'ALL'
+              ? 'bg-[#15803D] text-white border-[#15803D]'
+              : 'bg-white text-[#1A1A1A] border-[#1A1A1A] hover:bg-gray-100'
+          }`}
+        >
+          Semua ({products.length})
+        </button>
+
+        <button
+          onClick={() => setStatusFilter('DANGER')}
+          className={`min-h-[60px] px-6 rounded-lg font-black text-lg transition-colors cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap border-2 ${
+            statusFilter === 'DANGER'
+              ? 'bg-[#15803D] text-white border-[#15803D]'
+              : 'bg-white text-red-600 border-[#1A1A1A] hover:bg-red-50'
+          }`}
+        >
+          <AlertOctagon className="w-5 h-5 text-red-600" />
+          <span>Rugi ({metrics.dangerCount})</span>
+        </button>
+
+        <button
+          onClick={() => setStatusFilter('WARNING')}
+          className={`min-h-[60px] px-6 rounded-lg font-black text-lg transition-colors cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap border-2 ${
+            statusFilter === 'WARNING'
+              ? 'bg-[#15803D] text-white border-[#15803D]'
+              : 'bg-white text-amber-600 border-[#1A1A1A] hover:bg-amber-50'
+          }`}
+        >
+          <AlertTriangle className="w-5 h-5 text-amber-600" />
+          <span>Tipis ({metrics.warningCount})</span>
+        </button>
+
+        <button
+          onClick={() => setStatusFilter('HEALTHY')}
+          className={`min-h-[60px] px-6 rounded-lg font-black text-lg transition-colors cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap border-2 ${
+            statusFilter === 'HEALTHY'
+              ? 'bg-[#15803D] text-white border-[#15803D]'
+              : 'bg-white text-[#15803D] border-[#1A1A1A] hover:bg-emerald-50'
+          }`}
+        >
+          <CheckCircle2 className="w-5 h-5 text-[#15803D]" />
+          <span>Aman ({metrics.healthyCount})</span>
+        </button>
+      </div>
+
+      {/* 2b. Search & Date Filter Area */}
+      {products.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <div className="flex gap-2">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="w-6 h-6 text-[#1A1A1A] absolute left-4 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Cari nama barang atau kategori..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-[60px] pl-12 pr-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] placeholder:text-gray-500 focus:outline-none focus:border-[#15803D] font-bold"
+              />
+            </div>
+
+            {/* Date Input */}
+            <div className="relative w-1/3 min-w-[140px]">
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="w-full h-[60px] px-3 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] focus:outline-none focus:border-[#15803D] font-bold dark:[color-scheme:light]"
+              />
+            </div>
+
+            {/* Trash Delete Toggle Button */}
+            {onDeleteProducts && (
               <button
                 onClick={() => {
                   setIsDeleteMode(!isDeleteMode);
                   setSelectedProductIds([]);
                 }}
-                style={{ height: 48, fontSize: 15, fontWeight: 700, paddingLeft: 14, paddingRight: 14 }}
-                className={`flex items-center gap-1.5 rounded-2xl cursor-pointer active:scale-95 transition-all shadow-md shrink-0 mt-1 ${
+                className={`w-[60px] h-[60px] rounded-lg flex items-center justify-center transition-colors cursor-pointer border-2 ${
                   isDeleteMode
-                    ? 'bg-red-600 text-white'
-                    : 'bg-white/20 text-white hover:bg-white/30'
+                    ? 'bg-red-600 border-red-600 text-white'
+                    : 'bg-white border-[#1A1A1A] text-[#1A1A1A] hover:bg-gray-100'
                 }`}
+                title={isDeleteMode ? 'Batal Hapus' : 'Hapus Barang'}
               >
-                <Trash2 className="w-5 h-5" />
-                <span>{isDeleteMode ? 'Batal' : 'Hapus'}</span>
+                <Trash2 className="w-6 h-6" />
               </button>
             )}
+          </div>
+
+          {(searchQuery || dateFilter) && (
             <button
-              onClick={() => setIsAddModalOpen(true)}
-              style={{ height: 48, fontSize: 15, fontWeight: 700, paddingLeft: 16, paddingRight: 18 }}
-              className="flex items-center gap-2 rounded-2xl bg-white text-[#15803D] cursor-pointer active:scale-95 transition-all shadow-md shrink-0 mt-1"
+              onClick={() => {
+                setSearchQuery('');
+                setDateFilter('');
+              }}
+              className="w-full h-[40px] text-center bg-gray-100 border border-[#1A1A1A] text-sm font-bold text-[#1A1A1A] rounded hover:bg-gray-200 transition-colors"
             >
-              <Plus className="w-5 h-5" />
-              <span>Tambah</span>
+              Reset Filter
             </button>
-          </div>
+          )}
         </div>
+      )}
 
-        {/* Quick stats strip */}
-        <div className="flex gap-2 mt-4">
-          {[
-            { label: 'Rugi', count: metrics.dangerCount, color: '#FCA5A5', bg: 'rgba(239,68,68,0.2)' },
-            { label: 'Tipis', count: metrics.warningCount, color: '#FDE68A', bg: 'rgba(245,158,11,0.2)' },
-            { label: 'Aman', count: metrics.healthyCount, color: '#BBF7D0', bg: 'rgba(74,222,128,0.2)' },
-          ].map((s) => (
-            <div key={s.label} className="flex-1 rounded-xl px-3 py-2 text-center" style={{ backgroundColor: s.bg }}>
-              <div style={{ fontSize: 22, fontWeight: 900, color: s.color, lineHeight: 1 }} className="tabular-nums">
-                {s.count}
-              </div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 600, marginTop: 2 }}>
-                {s.label}
-              </div>
-            </div>
-          ))}
+      {/* Selection Utility Row */}
+      {isDeleteMode && filteredProducts.length > 0 && (
+        <div className="flex justify-between items-center px-1 py-1 text-base text-gray-700">
+          <button
+            onClick={() => {
+              const allIds = filteredProducts.map((p) => p.id);
+              const isAllSelected = selectedProductIds.length === allIds.length;
+              if (isAllSelected) {
+                setSelectedProductIds([]);
+              } else {
+                setSelectedProductIds(allIds);
+              }
+            }}
+            className="flex items-center gap-2 hover:text-black transition-colors cursor-pointer font-extrabold"
+          >
+            <input
+              type="checkbox"
+              checked={selectedProductIds.length === filteredProducts.length && filteredProducts.length > 0}
+              readOnly
+              className="w-6 h-6 cursor-pointer accent-red-600"
+            />
+            <span>{selectedProductIds.length === filteredProducts.length ? 'Batal Pilih Semua' : 'Pilih Semua'}</span>
+          </button>
+          <span className="font-extrabold">
+            {selectedProductIds.length} dari {filteredProducts.length} terpilih
+          </span>
         </div>
-      </div>
+      )}
 
-      {/* ── FILTER & SEARCH ── */}
-      <div className="px-4 pt-4 pb-2 space-y-3">
-        {/* Filter Pills */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-          {(
-            [
-              { id: 'ALL', label: 'Semua', count: products.length },
-              { id: 'DANGER', label: 'Rugi', count: metrics.dangerCount },
-              { id: 'WARNING', label: 'Tipis', count: metrics.warningCount },
-              { id: 'HEALTHY', label: 'Aman', count: metrics.healthyCount },
-            ] as { id: 'ALL' | MarginStatus; label: string; count: number }[]
-          ).map((f) => {
-            const isActive = statusFilter === f.id;
-            const dangerActive = f.id === 'DANGER' && isActive;
-            const warningActive = f.id === 'WARNING' && isActive;
-
-            let activeBg = '#15803D';
-            let activeText = '#FFFFFF';
-            if (dangerActive) { activeBg = '#DC2626'; activeText = '#FFFFFF'; }
-            else if (warningActive) { activeBg = '#F59E0B'; activeText = '#FFFFFF'; }
-
-            return (
-              <button
-                key={f.id}
-                onClick={() => setStatusFilter(f.id)}
-                style={{
-                  height: 48,
-                  paddingLeft: 18,
-                  paddingRight: 18,
-                  fontSize: 16,
-                  fontWeight: 700,
-                  borderRadius: 999,
-                  backgroundColor: isActive ? activeBg : '#FFFFFF',
-                  color: isActive ? activeText : '#6B7280',
-                  border: isActive ? 'none' : '2px solid #E5E7EB',
-                  whiteSpace: 'nowrap',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  flexShrink: 0,
-                  boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
-                }}
-              >
-                <span>{f.label}</span>
-                <span style={{
-                  fontSize: 14,
-                  fontWeight: 900,
-                  backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : '#F3F4F6',
-                  color: isActive ? '#FFFFFF' : '#374151',
-                  borderRadius: 999,
-                  paddingLeft: 8,
-                  paddingRight: 8,
-                  paddingTop: 2,
-                  paddingBottom: 2,
-                }}>
-                  {f.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Search Bar */}
-        <div className="relative">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-            style={{ width: 22, height: 22 }}
-          />
-          <input
-            type="text"
-            placeholder="Cari nama barang atau kategori..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ height: 60, fontSize: 16, paddingLeft: 52 }}
-            className="w-full pr-4 rounded-2xl bg-gray-50 border-2 border-gray-200 text-gray-900 placeholder:text-gray-400 font-medium focus:outline-none focus:border-green-600 transition-colors"
-          />
-        </div>
-      </div>
-
-      {/* ── PRODUCT LIST ── */}
-      <div className="px-4 pt-2 space-y-0">
-        {products.length === 0 ? (
-          <div className="mt-6 rounded-3xl bg-white border-2 border-dashed border-gray-200 p-8 text-center space-y-5">
-            <div className="w-16 h-16 rounded-2xl bg-green-50 border-2 border-green-100 flex items-center justify-center mx-auto">
-              <Package style={{ width: 32, height: 32, color: '#15803D' }} />
-            </div>
-            <div className="space-y-1">
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1A1A1A' }}>
-                Katalog Masih Kosong
-              </h2>
-              <p style={{ fontSize: 16, color: '#6B7280', lineHeight: 1.5 }} className="max-w-xs mx-auto">
-                Mulai dengan scan nota kulakan atau tambah barang manual.
-              </p>
-            </div>
-            <div className="space-y-2 max-w-xs mx-auto">
-              {onNavigateToScanReceipt && (
-                <button
-                  onClick={onNavigateToScanReceipt}
-                  style={{ height: 60, fontSize: 17, fontWeight: 700 }}
-                  className="w-full rounded-2xl bg-[#15803D] text-white flex items-center justify-center gap-3 cursor-pointer transition-all active:scale-[0.98] shadow-md"
-                >
-                  <FileText className="w-5 h-5" />
-                  <span>Scan Nota Grosir</span>
-                </button>
-              )}
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                style={{ height: 60, fontSize: 17, fontWeight: 700 }}
-                className="w-full rounded-2xl border-2 border-gray-200 bg-white text-gray-700 flex items-center justify-center gap-3 cursor-pointer transition-all active:scale-[0.98]"
-              >
-                <Plus className="w-5 h-5" />
-                <span>Tambah Manual</span>
-              </button>
-            </div>
-          </div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="mt-4 p-8 text-center rounded-3xl bg-white border-2 border-dashed border-gray-200">
-            <Package style={{ width: 32, height: 32, color: '#9CA3AF', margin: '0 auto 12px' }} />
-            <p style={{ fontSize: 18, fontWeight: 700, color: '#1A1A1A' }}>Barang tidak ditemukan</p>
-            <p style={{ fontSize: 15, color: '#6B7280', marginTop: 4 }}>
-              Coba ubah filter atau kata kunci pencarian.
-            </p>
+      {/* 3. Product List Area (Alternating white/subtle gray) */}
+      <div className="flex flex-col border border-gray-200 rounded-lg overflow-hidden">
+        {filteredProducts.length === 0 ? (
+          <div className="p-12 text-center text-gray-500 bg-[#F9F9F9]">
+            <Package className="w-10 h-10 mx-auto mb-2 text-gray-400" />
+            <p className="text-lg font-bold">Barang tidak ditemukan</p>
           </div>
         ) : (
-          <>
-            <div className="flex items-center justify-between py-3">
-              <p style={{ fontSize: 15, fontWeight: 600, color: '#6B7280' }}>
-                {filteredProducts.length} barang ditemukan
-              </p>
-            </div>
+          filteredProducts.map((prod, index) => {
+            const calc = calculateMargin(
+              prod.buyPrice,
+              prod.currentSellPrice,
+              prod.targetMarginPercent || settings.defaultTargetMarginPercent,
+              settings.roundingStep,
+              settings.dangerThresholdPercent
+            );
 
-            {filteredProducts.map((prod, idx) => {
-              const calc = calculateMargin(
-                prod.buyPrice,
-                prod.currentSellPrice,
-                prod.targetMarginPercent || settings.defaultTargetMarginPercent,
-                settings.roundingStep,
-                settings.dangerThresholdPercent
-              );
+            const isEven = index % 2 === 0;
+            const statusColor = calc.status === 'DANGER'
+              ? 'text-red-600'
+              : calc.status === 'WARNING'
+              ? 'text-amber-600'
+              : 'text-[#15803D]';
 
-              const isAlternate = idx % 2 === 0;
-              const statusColor =
-                calc.status === 'DANGER' ? { bg: '#FEF2F2', border: '#FECACA', text: '#DC2626' } :
-                  calc.status === 'WARNING' ? { bg: '#FEF3C7', border: '#FDE68A', text: '#B45309' } :
-                    { bg: '#F0FDF4', border: '#BBF7D0', text: '#15803D' };
+            const isSelected = selectedProductIds.includes(prod.id);
 
-              const isSelected = selectedProductIds.includes(prod.id);
-
-              const handleCardClick = () => {
-                if (isDeleteMode) {
-                  if (isSelected) {
-                    setSelectedProductIds((prev) => prev.filter((id) => id !== prod.id));
-                  } else {
-                    setSelectedProductIds((prev) => [...prev, prod.id]);
-                  }
+            const handleCardClick = () => {
+              if (isDeleteMode) {
+                if (isSelected) {
+                  setSelectedProductIds((prev) => prev.filter((id) => id !== prod.id));
                 } else {
-                  onOpenAlertModal(prod);
+                  setSelectedProductIds((prev) => [...prev, prod.id]);
                 }
-              };
+              } else {
+                onOpenAlertModal(prod);
+              }
+            };
 
-              return (
-                <div
-                  key={prod.id}
-                  onClick={handleCardClick}
-                  style={{
-                    backgroundColor: isSelected ? '#FEE2E2' : (isAlternate ? '#FFFFFF' : '#FAFAFA'),
-                    borderBottom: '1px solid #F3F4F6',
-                    paddingTop: 16,
-                    paddingBottom: 16,
-                    paddingLeft: 4,
-                    paddingRight: 4,
-                    cursor: 'pointer',
-                    minHeight: 90,
-                    transition: 'background-color 0.1s',
-                  }}
-                  className="active:bg-green-50 select-none relative"
-                >
-                  <div className="flex items-start gap-3">
-                    {isDeleteMode ? (
-                      <div className="flex items-center justify-center shrink-0 mt-3 pl-1">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          readOnly
-                          className="w-5 h-5 accent-red-600 cursor-pointer"
-                        />
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          width: 4,
-                          minHeight: 70,
-                          borderRadius: 999,
-                          backgroundColor: statusColor.text,
-                          flexShrink: 0,
-                          marginTop: 2,
-                        }}
-                      />
-                    )}
+            return (
+              <div
+                key={prod.id}
+                onClick={handleCardClick}
+                className={`p-5 flex flex-col gap-2 relative transition-colors cursor-pointer select-none border-b border-gray-200 ${
+                  isEven ? 'bg-[#F9F9F9]' : 'bg-[#FFFFFF]'
+                } ${
+                  isSelected ? 'bg-red-50 border-l-4 border-l-red-600' : 'border-l-4 border-l-transparent'
+                }`}
+              >
+                {isDeleteMode && (
+                  <div className="absolute right-4 top-4">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      readOnly
+                      className="w-6 h-6 accent-red-600 cursor-pointer"
+                    />
+                  </div>
+                )}
 
-                    <div className="flex-1 min-w-0">
-                      <h3 style={{ fontSize: 20, fontWeight: 800, color: '#1A1A1A', lineHeight: 1.25 }}
-                        className="truncate">
-                        {prod.name}
-                      </h3>
+                {/* Row 1: Product Title (Bold, Min 20px) */}
+                <div className="pr-12">
+                  <h3 className="text-[20px] font-black text-[#1A1A1A] leading-tight">
+                    {prod.name}
+                  </h3>
+                </div>
 
-                      <p style={{ fontSize: 15, color: '#6B7280', fontWeight: 500, marginTop: 3 }}>
-                        {prod.category}
-                        <span className="mx-2 text-gray-300">|</span>
-                        Stok: <strong style={{ color: '#1A1A1A', fontWeight: 700 }}>
-                          {prod.stockQty ?? 0} {prod.unit}
-                        </strong>
-                      </p>
+                {/* Row 2: Category Name | Stok: Qty */}
+                <div className="text-[16px] text-gray-700 font-bold">
+                  {prod.category} | Stok: {prod.stockQty ?? 0} {prod.unit}
+                </div>
 
-                      <div className="flex items-end justify-between mt-3 gap-2">
-                        <div>
-                          <div style={{ fontSize: 24, fontWeight: 900, color: '#15803D', lineHeight: 1 }}
-                            className="tabular-nums">
-                            {formatRupiah(prod.currentSellPrice)}
-                          </div>
-                          <div style={{ fontSize: 13, color: '#9CA3AF', marginTop: 2 }}>
-                            Modal: {formatRupiah(prod.buyPrice)}
-                          </div>
-                        </div>
+                {/* Row 3 (Right Aligned): Shelf Price & Status Badge */}
+                <div className="flex justify-between items-end mt-2">
+                  {/* Status Badge Tag */}
+                  <span className={`text-[16px] font-black uppercase ${statusColor}`}>
+                    [{calc.status === 'DANGER' ? 'Rugi' : calc.status === 'WARNING' ? 'Tipis' : 'Aman'} - {calc.activeMarginPercent.toFixed(1)}%]
+                  </span>
 
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span
-                            style={{
-                              color: statusColor.text,
-                              fontSize: 14,
-                              fontWeight: 800,
-                              paddingLeft: 12,
-                              paddingRight: 12,
-                              paddingTop: 6,
-                              paddingBottom: 6,
-                              borderRadius: 999,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 5,
-                            }}
-                          >
-                            {calc.status === 'DANGER' && <AlertOctagon style={{ width: 14, height: 14 }} />}
-                            {calc.status === 'WARNING' && <AlertTriangle style={{ width: 14, height: 14 }} />}
-                            {calc.status === 'HEALTHY' && <CheckCircle2 style={{ width: 14, height: 14 }} />}
-                            {STATUS_LABEL[calc.status]} {calc.activeMarginPercent.toFixed(1)}%
-                          </span>
-
-                          <ChevronRight style={{ width: 20, height: 20, color: '#D1D5DB' }} />
-                        </div>
-                      </div>
-                    </div>
+                  <div className="text-right">
+                    <span className="text-[24px] font-black text-[#15803D] tabular-nums">
+                      {formatRupiah(prod.currentSellPrice)}
+                    </span>
                   </div>
                 </div>
-              );
-            })}
-          </>
+              </div>
+            );
+          })
         )}
       </div>
 
@@ -504,7 +441,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Add New Product Modal */}
+      {/* Add New Product Modal (Dropdown + Large touch targets) */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
         <DialogContent className="max-w-md bg-white border-2 border-[#1A1A1A] p-6 rounded-lg text-[#1A1A1A] font-sans [&>button]:hidden">
           <DialogHeader className="border-b-2 border-gray-200 pb-3">
@@ -514,6 +451,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
           </DialogHeader>
 
           <form onSubmit={handleCreateProduct} className="space-y-4 mt-3 text-lg">
+            {/* Field 1: Nama Produk */}
             <div>
               <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Nama Produk</label>
               <input
@@ -526,6 +464,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
               />
             </div>
 
+            {/* Field 2 & 4: Kategori Dropdown & Nama Stok/Satuan */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Kategori</label>
@@ -554,6 +493,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
               </div>
             </div>
 
+            {/* Field 3: Total Stok */}
             <div>
               <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Total Stok</label>
               <input
@@ -566,6 +506,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
               />
             </div>
 
+            {/* Field 5 & 6: Harga Modal & Harga Jual */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Harga Modal (Rp)</label>
@@ -592,6 +533,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
               </div>
             </div>
 
+            {/* Computed Info Row */}
             <div className="bg-gray-100 p-4 rounded-lg border-2 border-gray-300 flex gap-3 text-[#1A1A1A]">
               <div className="flex-1">
                 <span className="text-xs font-bold text-gray-600 uppercase">Profit Netto</span>

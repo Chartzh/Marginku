@@ -48,68 +48,72 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   return (
-    <div className="space-y-4 pb-24 text-[#1A1D1E] font-sans">
-      {/* Title Header */}
-      <div className="pt-1">
-        <h1 className="text-2xl font-extrabold text-[#1A1D1E] tracking-tight">
-          Setelan Toko
-        </h1>
-        <p className="text-xs text-[#6B7280] mt-1">
-          Atur target keuntungan margin, pembulatan harga, dan profil akun
-        </p>
+    <div className="space-y-6 pb-28 text-[#1A1A1A] font-sans bg-white min-h-screen">
+      {/* 1. Header Area */}
+      <div className="-mx-4 -mt-4 mb-6 bg-[#15803D] p-5 text-white flex items-center justify-between shadow-md">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-white leading-none">
+            Setelan Toko
+          </h1>
+          <p className="text-lg font-medium text-white/90 mt-1">
+            Atur target keuntungan margin, pembulatan harga, dan profil akun
+          </p>
+        </div>
       </div>
 
       {/* Account Info Card (Supabase Auth) */}
       {user && (
-        <div className="rounded-3xl p-5 bg-white border border-[#E5E7EB] space-y-3 shadow-card">
-          <div className="flex items-center justify-between border-b border-[#F0F2F5] pb-3">
+        <div className="border-2 border-[#1A1A1A] rounded-lg p-5 bg-white space-y-4 shadow-sm">
+          <div className="flex items-center justify-between border-b-2 border-gray-200 pb-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-[#EBF5F0] border border-[#D1E7DD] flex items-center justify-center text-[#1B6440]">
-                <User className="w-5 h-5" />
+              <div className="w-12 h-12 rounded-lg bg-[#EBF5F0] border-2 border-[#15803D] flex items-center justify-center text-[#15803D]">
+                <User className="w-6 h-6 stroke-[2.5]" />
               </div>
               <div>
-                <span className="text-[10px] text-[#6B7280] block font-medium">Akun Terdaftar</span>
-                <span className="text-xs font-bold text-[#1A1D1E] truncate max-w-[200px] block">
+                <span className="text-xs font-black text-gray-500 uppercase tracking-wider block">
+                  Akun Terdaftar
+                </span>
+                <span className="text-lg font-black text-[#1A1A1A] truncate max-w-[200px] sm:max-w-[280px] block">
                   {user.email}
                 </span>
               </div>
             </div>
             <button
               onClick={() => signOut()}
-              className="h-[38px] px-3.5 rounded-full bg-[#FEE2E2] border border-[#FECACA] text-[#DC2626] hover:bg-[#FDD8D8] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="min-h-[48px] px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white border-2 border-red-600 font-extrabold text-base flex items-center gap-2 transition-colors cursor-pointer shadow"
             >
-              <LogOut className="w-3.5 h-3.5" />
+              <LogOut className="w-4 h-4 stroke-[2.5]" />
               <span>Keluar</span>
             </button>
           </div>
-          <div className="text-xs text-[#6B7280]">
+          <p className="text-base text-gray-700 font-bold">
             Sesi aktif terhubung ke database Supabase Marginku.
-          </div>
+          </p>
         </div>
       )}
 
       {/* Store Name Input */}
-      <div className="rounded-3xl p-5 bg-white border border-[#E5E7EB] space-y-3 shadow-card">
-        <label className="text-xs font-bold text-[#1A1D1E] flex items-center gap-1.5">
-          <Store className="w-4 h-4 text-[#1B6440]" />
+      <div className="border-2 border-[#1A1A1A] rounded-lg p-5 bg-white space-y-3 shadow-sm">
+        <label className="text-lg font-black text-[#1A1A1A] flex items-center gap-2">
+          <Store className="w-5 h-5 text-[#15803D] stroke-[2.5]" />
           <span>Nama Warung / Toko</span>
         </label>
         <input
           type="text"
           value={settings.storeName}
           onChange={(e) => update({ storeName: e.target.value })}
-          className="w-full h-[48px] px-4 rounded-2xl bg-[#F4F6F5] border border-[#E5E7EB] text-xs text-[#1A1D1E] font-bold focus:outline-none focus:border-[#1B6440] focus:ring-2 focus:ring-[#1B6440]/15"
+          className="w-full h-[60px] px-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] font-bold focus:outline-none focus:border-[#15803D]"
         />
       </div>
 
       {/* Target Margin % */}
-      <div className="rounded-3xl p-5 bg-white border border-[#E5E7EB] space-y-4 shadow-card">
-        <div className="flex items-center justify-between border-b border-[#F0F2F5] pb-3">
-          <label className="text-xs font-bold text-[#1A1D1E] flex items-center gap-1.5">
-            <Percent className="w-4 h-4 text-[#1B6440]" />
+      <div className="border-2 border-[#1A1A1A] rounded-lg p-5 bg-white space-y-4 shadow-sm">
+        <div className="flex items-center justify-between border-b-2 border-gray-200 pb-3">
+          <label className="text-lg font-black text-[#1A1A1A] flex items-center gap-2">
+            <Percent className="w-5 h-5 text-[#15803D] stroke-[2.5]" />
             <span>Target Margin Keuntungan Toko</span>
           </label>
-          <span className="text-base font-extrabold text-[#1B6440] tabular-nums">
+          <span className="text-2xl font-black text-[#15803D] tabular-nums bg-emerald-50 px-3 py-1 rounded-lg border-2 border-[#15803D]">
             {settings.defaultTargetMarginPercent}%
           </span>
         </div>
@@ -123,35 +127,35 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           onChange={(e) =>
             update({ defaultTargetMarginPercent: parseInt(e.target.value, 10) })
           }
-          className="w-full h-2 bg-[#E5E7EB] rounded-lg appearance-none cursor-pointer accent-[#1B6440]"
+          className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#15803D]"
         />
 
-        <div className="flex justify-between text-[11px] text-[#6B7280] tabular-nums font-medium">
+        <div className="flex justify-between text-sm font-extrabold text-gray-700 tabular-nums">
           <span>5% (Tipis)</span>
           <span>15% (Standar Warung)</span>
           <span>35% (Tinggi)</span>
         </div>
 
-        <p className="text-xs text-[#6B7280] bg-[#F8F9FA] p-3 rounded-2xl border border-[#E5E7EB] leading-relaxed">
+        <div className="text-base text-gray-800 bg-gray-100 p-4 rounded-lg border-2 border-gray-300 font-bold leading-relaxed">
           💡 Menggeser margin akan memperbarui analisis batas kesehatan produk (Margin Kritis / Untung Tipis). Tekan tombol di bawah untuk langsung memperbarui seluruh harga jual barang di katalog.
-        </p>
+        </div>
 
         <button
           onClick={handleApplyToAll}
-          className={`w-full h-[48px] px-4 rounded-full font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-floating ${
+          className={`w-full min-h-[60px] px-5 rounded-lg font-extrabold text-lg flex items-center justify-center gap-2 border-2 transition-colors cursor-pointer shadow ${
             isAppliedSuccess
-              ? 'bg-[#EBF5F0] border border-[#D1E7DD] text-[#1B6440]'
-              : 'bg-[#1B6440] hover:bg-[#154E30] text-white'
+              ? 'bg-emerald-50 border-[#15803D] text-[#15803D]'
+              : 'bg-[#15803D] hover:bg-[#15803D]/90 border-[#15803D] text-white'
           }`}
         >
           {isAppliedSuccess ? (
             <>
-              <CheckCircle2 className="w-4 h-4 text-[#1B6440]" />
+              <CheckCircle2 className="w-6 h-6 text-[#15803D] stroke-[2.5]" />
               <span>Seluruh harga barang telah disesuaikan ({settings.defaultTargetMarginPercent}%)</span>
             </>
           ) : (
             <>
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className="w-6 h-6 stroke-[2.5]" />
               <span>Terapkan Margin {settings.defaultTargetMarginPercent}% ke Seluruh Harga Barang</span>
             </>
           )}
@@ -159,42 +163,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* Rupiah Rounding Step */}
-      <div className="rounded-3xl p-5 bg-white border border-[#E5E7EB] space-y-4 shadow-card">
-        <div className="border-b border-[#F0F2F5] pb-3">
-          <label className="text-xs font-bold text-[#1A1D1E] flex items-center gap-1.5">
-            <Coins className="w-4 h-4 text-[#1B6440]" />
+      <div className="border-2 border-[#1A1A1A] rounded-lg p-5 bg-white space-y-4 shadow-sm">
+        <div className="border-b-2 border-gray-200 pb-3">
+          <label className="text-lg font-black text-[#1A1A1A] flex items-center gap-2">
+            <Coins className="w-5 h-5 text-[#15803D] stroke-[2.5]" />
             <span>Pembulatan Pecahan Uang Kembalian</span>
           </label>
-          <p className="text-xs text-[#6B7280] mt-0.5">
+          <p className="text-base text-gray-600 font-bold mt-1">
             Harga jual otomatis dibulatkan ke atas agar tidak butuh koin receh langka
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button
             onClick={() => update({ roundingStep: 500 })}
-            className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer shadow-sm ${
+            className={`p-4 rounded-lg border-2 text-left transition-all cursor-pointer ${
               settings.roundingStep === 500
-                ? 'bg-[#EBF5F0] border-[#1B6440] text-[#1B6440]'
-                : 'bg-[#F8F9FA] border-[#E5E7EB] text-[#6B7280] hover:border-[#1B6440]'
+                ? 'bg-emerald-50 border-[#15803D] text-[#15803D]'
+                : 'bg-white border-[#1A1A1A] text-[#1A1A1A] hover:bg-gray-50'
             }`}
           >
-            <span className="text-xs font-bold block tabular-nums text-[#1A1D1E]">Kelipatan Rp 500</span>
-            <span className="text-[11px] text-[#6B7280] block mt-0.5">
+            <span className="text-lg font-black block tabular-nums text-[#1A1A1A]">Kelipatan Rp 500</span>
+            <span className="text-sm font-bold block mt-1 text-gray-600">
               Contoh: Rp 3.120 → Rp 3.500
             </span>
           </button>
 
           <button
             onClick={() => update({ roundingStep: 1000 })}
-            className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer shadow-sm ${
+            className={`p-4 rounded-lg border-2 text-left transition-all cursor-pointer ${
               settings.roundingStep === 1000
-                ? 'bg-[#EBF5F0] border-[#1B6440] text-[#1B6440]'
-                : 'bg-[#F8F9FA] border-[#E5E7EB] text-[#6B7280] hover:border-[#1B6440]'
+                ? 'bg-emerald-50 border-[#15803D] text-[#15803D]'
+                : 'bg-white border-[#1A1A1A] text-[#1A1A1A] hover:bg-gray-50'
             }`}
           >
-            <span className="text-xs font-bold block tabular-nums text-[#1A1D1E]">Kelipatan Rp 1.000</span>
-            <span className="text-[11px] text-[#6B7280] block mt-0.5">
+            <span className="text-lg font-black block tabular-nums text-[#1A1A1A]">Kelipatan Rp 1.000</span>
+            <span className="text-sm font-bold block mt-1 text-gray-600">
               Contoh: Rp 3.120 → Rp 4.000
             </span>
           </button>
@@ -202,15 +206,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* Reset Demo Button */}
-      <div className="pt-1">
+      <div className="pt-2">
         <button
           onClick={onResetDemoData}
-          className="w-full h-[48px] rounded-full font-bold text-xs bg-white hover:bg-[#F4F6F5] text-[#6B7280] hover:text-[#1A1D1E] border border-[#E5E7EB] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+          className="w-full min-h-[60px] px-5 rounded-lg font-extrabold text-lg bg-white hover:bg-gray-100 text-gray-700 hover:text-[#1A1A1A] border-2 border-[#1A1A1A] flex items-center justify-center gap-2 transition-colors cursor-pointer shadow"
         >
-          <RotateCcw className="w-4 h-4" />
+          <RotateCcw className="w-5 h-5 stroke-[2.5]" />
           <span>Reset ulang seluruh data demo</span>
         </button>
       </div>
     </div>
   );
 };
+

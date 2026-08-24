@@ -468,6 +468,20 @@ const AppContent: React.FC = () => {
     setAuditLogs((prev) => prev.filter((log) => !logIds.includes(log.id)));
   };
 
+  // ── Auth Guard ──────────────────────────────────────────────────────────────
+  if (authLoading) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center bg-[#F8F9FA]">
+        <RefreshCw className="w-6 h-6 text-[#1B6440] animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthPage onSuccess={() => {/* AuthContext will update user automatically */}} />;
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
   return (
     <MobileShell>
       {/* Global Unified Header */}

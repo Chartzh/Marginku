@@ -11,6 +11,10 @@ import {
   Scan,
   Sparkles,
   CheckCircle2,
+  Camera,
+  RefreshCw,
+  X,
+  Upload,
 } from 'lucide-react';
 import { auditLabelRak } from '@/services/api';
 
@@ -48,7 +52,17 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
   const [aiStageIndex, setAiStageIndex] = useState(0);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Live WebRTC Camera States
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const nativeCameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize scanResult safely if null and products available
   useEffect(() => {
@@ -86,10 +100,121 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
     };
   }, [apiLoading]);
 
+  // Start Live WebRTC Camera Stream
+  const startLiveCamera = async (mode: 'environment' | 'user' = facingMode) => {
+    setCameraError(null);
+    setApiError(null);
+    try {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: mode,
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setIsCameraActive(true);
+    } catch (err: any) {
+      console.error('Camera access error:', err);
+      setCameraError('Gagal mengakses kamera live. Pastikan izin kamera diizinkan di browser.');
+      setIsCameraActive(false);
+    }
+  };
+
+  // Stop Live Camera Stream
+  const stopLiveCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  // Toggle Camera Facing Mode (Front / Rear)
+  const toggleCameraFacingMode = () => {
+    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(nextMode);
+    if (isCameraActive) {
+      startLiveCamera(nextMode);
+    }
+  };
+
+  // Toggle Flashlight (Torch) if supported
+  const toggleFlashlight = async () => {
+    if (!streamRef.current) {
+      setFlashlightOn(!flashlightOn);
+      return;
+    }
+    const track = streamRef.current.getVideoTracks()[0];
+    if (track) {
+      const capabilities = (track.getCapabilities?.() || {}) as any;
+      if (capabilities.torch) {
+        try {
+          await track.applyConstraints({
+            advanced: [{ torch: !flashlightOn } as any],
+          });
+          setFlashlightOn(!flashlightOn);
+        } catch (e) {
+          console.warn('Flashlight error:', e);
+        }
+      } else {
+        setFlashlightOn(!flashlightOn);
+      }
+    }
+  };
+
+  // Capture current frame from Live Video Stream and process
+  const capturePhotoFromLiveStream = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          const file = new File([blob], `shelf-scan-${Date.now()}.jpg`, { type: 'image/jpeg' });
+          stopLiveCamera();
+          processImageFile(file);
+        }
+      },
+      'image/jpeg',
+      0.95
+    );
+  };
+
+  // Clean up camera stream on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
   const processDetection = (preset: typeof demoShelfPresets[0]) => {
     setActivePresetId(preset.id);
+    stopLiveCamera();
 
-    // Safe handling when products array is empty
     if (!products || products.length === 0) {
       const fallbackProd: ProductItem = {
         id: 'prod-fallback',
@@ -155,17 +280,13 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processImageFile = async (file: File) => {
     setApiLoading(true);
     setApiError(null);
 
     try {
       const result = await auditLabelRak(file, settings.defaultTargetMarginPercent);
       if (result.status === 'success') {
-        // Safe matching with products array
         const matched = products && products.length > 0
           ? products.find(
               (p) => p.name.toLowerCase() === result.nama_di_nota?.toLowerCase()
@@ -220,290 +341,356 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
     }
   };
 
-  return (
-    <div className="pb-24 text-[#1A1A1A] font-sans" style={{ backgroundColor: '#FFFFFF', minHeight: '100%' }}>
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      stopLiveCamera();
+      processImageFile(file);
+    }
+  };
 
-      {/* ── GREEN APP BAR ── */}
-      <div style={{ backgroundColor: '#15803D' }} className="px-4 pt-4 pb-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 style={{ fontSize: 28, fontWeight: 900, color: '#FFFFFF', lineHeight: 1.1, letterSpacing: '-0.03em' }}>
-              Scan Rak
-            </h1>
-            <p style={{ fontSize: 16, color: '#BBF7D0', fontWeight: 500, marginTop: 3 }}>
-              Periksa harga label etalase toko
-            </p>
-          </div>
+  return (
+    <div className="space-y-6 pb-28 text-[#1A1A1A] font-sans bg-white min-h-screen">
+      {/* 1. Header Bar */}
+      <div className="-mx-4 -mt-4 mb-6 bg-[#15803D] p-5 text-white flex items-center justify-between shadow-md">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-white leading-none">
+            Scan Label Rak
+          </h1>
+          <p className="text-lg font-medium text-white/90 mt-1">
+            Periksa harga label etalase toko & kecocokan margin.
+          </p>
         </div>
       </div>
 
-      <div className="px-4 pt-4 space-y-4">
-
-        {/* ── VIEWFINDER CARD ── */}
-        <div className="relative w-full rounded-3xl bg-[#1A1D1E] overflow-hidden shadow-lg" style={{ minHeight: 180 }}>
-          {/* Top bar */}
-          <div className="flex items-center justify-between px-4 pt-4">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15">
-              <span className="w-2 h-2 rounded-full bg-[#86D6BE] animate-pulse" />
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#86D6BE' }}>Kamera Pemindai</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setFlashlightOn(!flashlightOn)}
-                aria-label="Senter"
-                style={{ width: 40, height: 40 }}
-                className={`rounded-full flex items-center justify-center transition-all cursor-pointer ${
-                  flashlightOn
-                    ? 'bg-[#F59E0B] text-black shadow-md'
-                    : 'bg-white/15 text-white hover:bg-white/25 border border-white/10'
-                }`}
-              >
-                <Flashlight className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                aria-label="Pilih Foto Galeri"
-                style={{ width: 40, height: 40 }}
-                className="rounded-full bg-white/15 text-white hover:bg-white/25 border border-white/10 flex items-center justify-center transition-all cursor-pointer"
-              >
-                <ImageIcon className="w-5 h-5" />
-              </button>
-            </div>
+      {/* 2. Viewfinder Camera Box */}
+      <div className="bg-[#1A1D1E] border-2 border-[#1A1A1A] rounded-lg p-4 space-y-4 shadow text-white relative overflow-hidden min-h-[320px] flex flex-col justify-between">
+        {/* Top Controls Bar */}
+        <div className="flex items-center justify-between z-10">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-[#86D6BE] text-sm font-bold backdrop-blur-md">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#86D6BE] animate-pulse" />
+            <span>{isCameraActive ? 'Live Camera Active' : 'Kamera Pemindai'}</span>
           </div>
 
-          {/* Center — 3 states: idle / loading / has-result */}
-          <div
-            className="flex flex-col items-center justify-center py-5 cursor-pointer select-none"
-            onClick={() => !apiLoading && fileInputRef.current?.click()}
-            role="button"
-            aria-label="Buka kamera untuk scan label rak"
-          >
-            {apiLoading ? (
-              /* STATE 2: AI Loading */
-              <div className="relative rounded-2xl bg-black/40 backdrop-blur-sm border border-white/20 flex flex-col items-center justify-center p-5 text-center"
-                style={{ width: 260, minHeight: 100 }}>
-                <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#86D6BE] rounded-tl-lg" />
-                <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#86D6BE] rounded-tr-lg" />
-                <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#86D6BE] rounded-bl-lg" />
-                <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#86D6BE] rounded-br-lg" />
-                <div className="flex items-center justify-center gap-2 text-[#86D6BE] mb-2">
-                  <Sparkles className="w-4 h-4 animate-spin" />
-                  <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em' }}>MEMINDAI AI...</span>
-                </div>
-                <p style={{ fontSize: 13, color: '#FFFFFF', fontWeight: 500, maxWidth: 200 }} className="truncate mb-2">
-                  {AI_AUDIT_STAGES[aiStageIndex]}
-                </p>
-                <div className="w-full bg-white/20 h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#86D6BE] transition-all duration-500 rounded-full"
-                    style={{ width: `${((aiStageIndex + 1) / AI_AUDIT_STAGES.length) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ) : scanResult?.shelfData ? (
-              /* STATE 3: Has Result */
-              <div className="relative rounded-2xl bg-black/40 backdrop-blur-sm border border-white/20 flex flex-col items-center justify-center p-4 text-center"
-                style={{ width: 260, minHeight: 90 }}>
-                <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#86D6BE] rounded-tl-lg" />
-                <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#86D6BE] rounded-tr-lg" />
-                <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#86D6BE] rounded-bl-lg" />
-                <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#86D6BE] rounded-br-lg" />
-                <span style={{ fontSize: 10, color: '#86D6BE', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 6 }}>
-                  ✓ TERDETEKSI
-                </span>
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#15803D]/80 border border-[#86D6BE]/40 text-white shadow-sm max-w-[220px]"
-                  style={{ fontSize: 13, fontWeight: 700 }}>
-                  <Scan className="w-4 h-4 shrink-0 text-[#86D6BE]" />
-                  <span className="truncate">{scanResult.shelfData.detectedName}</span>
-                </div>
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 6, fontWeight: 500 }}>
-                  Tap di sini untuk scan ulang
-                </span>
-              </div>
-            ) : (
-              /* STATE 1: Idle — belum pernah scan */
-              <div className="flex flex-col items-center gap-3 py-2">
-                <div
-                  className="rounded-full border-2 border-dashed border-[#86D6BE]/60 flex items-center justify-center"
-                  style={{ width: 72, height: 72, backgroundColor: 'rgba(134,214,190,0.1)' }}
-                >
-                  <ImageIcon style={{ width: 32, height: 32, color: '#86D6BE' }} />
-                </div>
-                <div className="text-center space-y-1">
-                  <p style={{ fontSize: 16, fontWeight: 800, color: '#FFFFFF' }}>
-                    Tap untuk buka kamera
-                  </p>
-                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
-                    Pilih foto label harga dari galeri atau kamera
-                  </p>
-                </div>
-                <div
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full"
-                  style={{ backgroundColor: '#15803D', fontSize: 14, fontWeight: 700, color: '#FFFFFF' }}
-                >
-                  <Scan className="w-4 h-4" />
-                  <span>Mulai Scan</span>
-                </div>
-              </div>
+          <div className="flex items-center gap-2 z-10">
+            {isCameraActive && (
+              <button
+                onClick={toggleCameraFacingMode}
+                title="Tukar Kamera"
+                className="w-[44px] h-[44px] rounded-lg bg-white/15 text-white hover:bg-white/25 border border-white/20 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <RefreshCw className="w-5 h-5" />
+              </button>
+            )}
+
+            <button
+              onClick={toggleFlashlight}
+              aria-label="Senter"
+              className={`w-[44px] h-[44px] rounded-lg flex items-center justify-center border-2 transition-colors cursor-pointer ${
+                flashlightOn
+                  ? 'bg-amber-500 text-black border-amber-600 shadow'
+                  : 'bg-white/15 text-white border-white/20 hover:bg-white/25'
+              }`}
+            >
+              <Flashlight className="w-5 h-5" />
+            </button>
+
+            {isCameraActive && (
+              <button
+                onClick={stopLiveCamera}
+                title="Tutup Kamera Live"
+                className="w-[44px] h-[44px] rounded-lg bg-red-600/80 text-white hover:bg-red-700 border border-red-500 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
             )}
           </div>
         </div>
 
-        {/* Hidden File Input */}
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          ref={fileInputRef}
-          onChange={handleFileUpload}
-          className="hidden"
-        />
+        {/* Viewfinder Center Area */}
+        <div className="relative flex-1 flex flex-col items-center justify-center my-2 min-h-[200px] overflow-hidden rounded-lg">
+          {/* STATE A: Live Web Camera Active */}
+          {isCameraActive ? (
+            <div className="relative w-full h-[260px] bg-black rounded-lg overflow-hidden border border-white/20">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+              {/* Target Reticle Overlay */}
+              <div className="absolute inset-4 border-2 border-dashed border-[#86D6BE]/80 rounded-lg pointer-events-none flex items-center justify-center">
+                <div className="w-12 h-12 border-t-2 border-l-2 border-[#86D6BE] absolute top-0 left-0" />
+                <div className="w-12 h-12 border-t-2 border-r-2 border-[#86D6BE] absolute top-0 right-0" />
+                <div className="w-12 h-12 border-b-2 border-l-2 border-[#86D6BE] absolute bottom-0 left-0" />
+                <div className="w-12 h-12 border-b-2 border-r-2 border-[#86D6BE] absolute bottom-0 right-0" />
+                <span className="text-xs font-extrabold text-[#86D6BE] bg-black/60 px-3 py-1 rounded-full backdrop-blur-md">
+                  Posisikan Label Rak di Tengah
+                </span>
+              </div>
+            </div>
+          ) : apiLoading ? (
+            /* STATE B: AI Processing Loading */
+            <div className="p-5 rounded-lg bg-emerald-950/80 border-2 border-[#15803D] space-y-3 text-white w-full max-w-xs text-center shadow-lg">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2 text-[#86D6BE] font-black">
+                  <Sparkles className="w-5 h-5 animate-spin" />
+                  <span>AI Gemini Vision</span>
+                </div>
+                <span className="text-[#86D6BE] text-xs font-black">
+                  Tahap {aiStageIndex + 1}/{AI_AUDIT_STAGES.length}
+                </span>
+              </div>
+              <p className="text-base text-white font-extrabold truncate">
+                {AI_AUDIT_STAGES[aiStageIndex]}
+              </p>
+              <div className="w-full bg-white/20 h-3 rounded-lg border border-white/30 overflow-hidden">
+                <div
+                  className="h-full bg-[#86D6BE] transition-all duration-500 rounded-lg"
+                  style={{ width: `${((aiStageIndex + 1) / AI_AUDIT_STAGES.length) * 100}%` }}
+                />
+              </div>
+            </div>
+          ) : scanResult?.shelfData ? (
+            /* STATE C: Scan Detected Result State */
+            <div className="flex flex-col items-center justify-center p-4 text-center space-y-2">
+              <span className="text-xs font-black text-[#86D6BE] uppercase tracking-widest">
+                ✓ Terdeteksi
+              </span>
+              <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#15803D] border-2 border-white/40 text-white shadow font-bold text-base max-w-[260px]">
+                <Scan className="w-5 h-5 shrink-0 text-[#86D6BE]" />
+                <span className="truncate">{scanResult.shelfData.detectedName}</span>
+              </div>
+              <button
+                onClick={() => startLiveCamera()}
+                className="text-xs text-[#86D6BE] hover:underline font-bold mt-1 cursor-pointer"
+              >
+                Ketuk di sini untuk aktifkan kamera live & scan lagi
+              </button>
+            </div>
+          ) : (
+            /* STATE D: Idle Initial State */
+            <div className="flex flex-col items-center gap-3 py-4 text-center">
+              <div className="w-16 h-16 rounded-full bg-white/10 border-2 border-dashed border-[#86D6BE] flex items-center justify-center text-[#86D6BE]">
+                <Camera className="w-8 h-8" />
+              </div>
+              <div>
+                <p className="text-lg font-black text-white">
+                  Kamera Pemindai Label Rak
+                </p>
+                <p className="text-sm text-white/70 font-bold mt-0.5">
+                  Aktifkan kamera live di web app atau gunakan app kamera HP
+                </p>
+              </div>
+              <button
+                onClick={() => startLiveCamera()}
+                className="min-h-[52px] px-6 rounded-lg bg-[#15803D] hover:bg-[#15803D]/90 text-white border-2 border-white/30 font-extrabold text-base inline-flex items-center gap-2 shadow cursor-pointer transition-colors mt-1"
+              >
+                <Camera className="w-5 h-5" />
+                <span>Buka Live Kamera Web</span>
+              </button>
+            </div>
+          )}
+        </div>
 
-        {/* ── ERROR BANNER ── */}
-        {apiError && (
-          <div className="font-bold px-4 py-4 rounded-2xl bg-[#FEE2E2] border-2 border-[#FECACA] flex items-start gap-3">
-            <AlertOctagon style={{ width: 22, height: 22, color: '#DC2626', flexShrink: 0, marginTop: 2 }} />
-            <span style={{ fontSize: 16, color: '#DC2626', fontWeight: 700 }}>{apiError}</span>
+        {/* Shutter Button when Live Camera is Active */}
+        {isCameraActive && (
+          <div className="flex items-center justify-center pt-2 border-t border-white/15">
+            <button
+              onClick={capturePhotoFromLiveStream}
+              className="w-16 h-16 rounded-full bg-white text-[#15803D] hover:bg-gray-100 flex items-center justify-center shadow-xl border-4 border-[#15803D] active:scale-95 transition-all cursor-pointer"
+              title="Jepret Foto Label Rak"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#15803D] flex items-center justify-center">
+                <Scan className="w-5 h-5 text-white" />
+              </div>
+            </button>
           </div>
         )}
 
-        {/* ── SAMPLE CHIPS ── */}
-        <div className="space-y-3">
-          <label style={{ fontSize: 15, fontWeight: 700, color: '#6B7280', display: 'block' }}>
-            Pilih sampel label rak fisik:
-          </label>
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {demoShelfPresets.map((preset) => {
-              const isSelected = preset.id === activePresetId;
-              return (
-                <button
-                  key={preset.id}
-                  onClick={() => processDetection(preset)}
-                  className="active:scale-95"
-                  style={{
-                    height: 52,
-                    paddingLeft: 16,
-                    paddingRight: 16,
-                    borderRadius: 999,
-                    fontSize: 14,
-                    fontWeight: 700,
-                    backgroundColor: isSelected ? '#15803D' : '#FFFFFF',
-                    color: isSelected ? '#FFFFFF' : '#1A1A1A',
-                    border: isSelected ? 'none' : '2px solid #E5E7EB',
-                    whiteSpace: 'nowrap',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    flexShrink: 0,
-                    boxShadow: isSelected ? '0 2px 8px rgba(0,0,0,0.15)' : '0 1px 3px rgba(0,0,0,0.06)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                  }}
-                >
-                  <span>{preset.detectedName}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: isSelected ? 'rgba(255,255,255,0.75)' : '#6B7280' }}>
-                    {formatRupiah(preset.detectedPrice)}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+        {/* Hidden Canvas for Live Stream Frame Capture */}
+        <canvas ref={canvasRef} className="hidden" />
+      </div>
+
+      {/* Hidden File Inputs */}
+      {/* 1. App Kamera HP (Native Camera Capture) */}
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        ref={nativeCameraInputRef}
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+      {/* 2. Galeri Foto */}
+      <input
+        type="file"
+        accept="image/*"
+        ref={galleryInputRef}
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+
+      {/* 3. Option Action Bar (Multi-Method Selection) */}
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          onClick={() => {
+            if (isCameraActive) {
+              stopLiveCamera();
+            } else {
+              startLiveCamera();
+            }
+          }}
+          className={`min-h-[54px] px-2 rounded-lg font-extrabold text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer border-2 shadow ${
+            isCameraActive
+              ? 'bg-amber-500 text-black border-amber-600'
+              : 'bg-[#15803D] text-white border-[#1A1A1A] hover:bg-[#15803D]/90'
+          }`}
+        >
+          <Camera className="w-4 h-4 shrink-0" />
+          <span>{isCameraActive ? 'Tutup Live' : 'Kamera Live'}</span>
+        </button>
+
+        <button
+          onClick={() => nativeCameraInputRef.current?.click()}
+          className="min-h-[54px] px-2 rounded-lg bg-white hover:bg-gray-100 text-[#1A1A1A] font-extrabold text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer border-2 border-[#1A1A1A] shadow"
+        >
+          <Camera className="w-4 h-4 shrink-0 text-[#15803D]" />
+          <span>App Kamera</span>
+        </button>
+
+        <button
+          onClick={() => galleryInputRef.current?.click()}
+          className="min-h-[54px] px-2 rounded-lg bg-white hover:bg-gray-100 text-[#1A1A1A] font-extrabold text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer border-2 border-[#1A1A1A] shadow"
+        >
+          <ImageIcon className="w-4 h-4 shrink-0 text-[#1A1A1A]" />
+          <span>Galeri Foto</span>
+        </button>
+      </div>
+
+      {/* Camera & API Error Banners */}
+      {(cameraError || apiError) && (
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-red-50 border-2 border-red-600 text-red-600 font-extrabold text-base">
+          <AlertOctagon className="w-6 h-6 text-red-600 shrink-0" />
+          <span>{cameraError || apiError}</span>
         </div>
+      )}
 
-        {/* ── SCAN RESULT CARD ── */}
-        {scanResult && scanResult.matchedProduct && scanResult.analysis && (() => {
-          const { matchedProduct: mp, analysis: an, shelfData: sd } = scanResult;
-          const statusColor =
-            an.status === 'DANGER'
-              ? { text: '#DC2626', badgeBg: '#FEE2E2', border: '#FECACA', label: 'Rugi' }
-              : an.status === 'WARNING'
-              ? { text: '#B45309', badgeBg: '#FEF3C7', border: '#FDE68A', label: 'Tipis' }
-              : { text: '#15803D', badgeBg: '#DCFCE7', border: '#BBF7D0', label: 'Aman' };
+      {/* 4. Sample Chips (Presets) */}
+      <div className="space-y-3">
+        <label className="text-base font-extrabold text-[#1A1A1A] block">
+          Pilih sampel label rak fisik:
+        </label>
+        <div className="flex w-full gap-2 overflow-x-auto pb-2 scrollbar-none select-none">
+          {demoShelfPresets.map((preset) => {
+            const isSelected = preset.id === activePresetId;
+            return (
+              <button
+                key={preset.id}
+                onClick={() => processDetection(preset)}
+                className={`min-h-[60px] px-5 rounded-lg font-black text-base transition-colors cursor-pointer flex items-center gap-2 whitespace-nowrap border-2 shrink-0 ${
+                  isSelected
+                    ? 'bg-[#15803D] text-white border-[#15803D] shadow'
+                    : 'bg-white text-[#1A1A1A] border-[#1A1A1A] hover:bg-gray-100'
+                }`}
+              >
+                <span>{preset.detectedName}</span>
+                <span className={`text-sm font-bold ${isSelected ? 'text-white/80' : 'text-gray-600'}`}>
+                  ({formatRupiah(preset.detectedPrice)})
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-          return (
-            <div
-              className="rounded-3xl overflow-hidden bg-white"
-              style={{ border: `2px solid ${statusColor.border}`, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
-            >
-              {/* Status header stripe */}
-              <div className="px-5 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {an.status === 'HEALTHY'
-                    ? <CheckCircle2 style={{ width: 18, height: 18, color: statusColor.text }} />
-                    : <AlertOctagon style={{ width: 18, height: 18, color: statusColor.text }} />}
-                  <span style={{ fontSize: 15, fontWeight: 800, color: statusColor.text }}>
-                    {statusColor.label} - Margin {an.activeMarginPercent.toFixed(1)}%
-                  </span>
-                </div>
-                <span
-                  className="tabular-nums"
-                  style={{
-                    fontSize: 13, fontWeight: 700, color: statusColor.text,
-                    backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 999,
-                    paddingLeft: 10, paddingRight: 10, paddingTop: 4, paddingBottom: 4,
-                    border: `1px solid ${statusColor.border}`,
-                  }}
-                >
-                  Rak: {formatRupiah(sd.detectedPrice)}
+      {/* 5. Scan Result Analysis Card */}
+      {scanResult && scanResult.matchedProduct && scanResult.analysis && (() => {
+        const { matchedProduct: mp, analysis: an, shelfData: sd } = scanResult;
+        const statusText = an.status === 'DANGER' ? 'Rugi' : an.status === 'WARNING' ? 'Tipis' : 'Aman';
+        const statusColorClass =
+          an.status === 'DANGER'
+            ? 'text-red-600'
+            : an.status === 'WARNING'
+            ? 'text-amber-600'
+            : 'text-[#15803D]';
+
+        return (
+          <div className="bg-white border-2 border-[#1A1A1A] rounded-lg p-5 space-y-4 shadow">
+            {/* Status Header Stripe */}
+            <div className="flex items-center justify-between border-b-2 border-gray-200 pb-3">
+              <div className="flex items-center gap-2">
+                {an.status === 'HEALTHY' ? (
+                  <CheckCircle2 className="w-6 h-6 text-[#15803D]" />
+                ) : (
+                  <AlertOctagon className={`w-6 h-6 ${statusColorClass}`} />
+                )}
+                <span className={`text-lg font-black uppercase ${statusColorClass}`}>
+                  [{statusText} - Margin {an.activeMarginPercent.toFixed(1)}%]
                 </span>
               </div>
-
-              <div className="px-5 py-4 space-y-4">
-                {/* Product name + category */}
-                <div>
-                  <h2 style={{ fontSize: 22, fontWeight: 900, color: '#1A1A1A', lineHeight: 1.2 }}>
-                    {mp.name}
-                  </h2>
-                  <p style={{ fontSize: 15, color: '#6B7280', fontWeight: 500, marginTop: 4 }}>
-                    Kategori: <strong style={{ color: '#1A1A1A', fontWeight: 700 }}>{mp.category}</strong>
-                  </p>
-                </div>
-
-                {/* Financial metrics 3-column */}
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="rounded-2xl p-3 border">
-                    <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>Modal</span>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: '#1A1A1A' }} className="tabular-nums">
-                      {formatRupiah(mp.buyPrice)}
-                    </div>
-                  </div>
-                  <div className="rounded-2xl p-3" style={{ border: `1px solid ${statusColor.border}` }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: statusColor.text, display: 'block', marginBottom: 4 }}>Margin</span>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: statusColor.text }} className="tabular-nums">
-                      {an.activeMarginPercent.toFixed(1)}%
-                    </div>
-                  </div>
-                  <div className="rounded-2xl p-3 border border-green-200">
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#15803D', display: 'block', marginBottom: 4 }}>Saran Harga</span>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: '#15803D' }} className="tabular-nums">
-                      {formatRupiah(an.smartRoundedSellPrice)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* CTA Button */}
-                <button
-                  onClick={() => { if (scanResult.matchedProduct) onOpenAlertModal(scanResult.matchedProduct); }}
-                  style={{ height: 60, fontSize: 17, fontWeight: 800, borderRadius: 16 }}
-                  className="w-full bg-[#15803D] hover:bg-[#166534] text-white flex items-center justify-between px-5 transition-all cursor-pointer shadow-md active:scale-[0.98] group"
-                >
-                  <span>
-                    {an.status === 'DANGER'
-                      ? `Amankan margin (ubah ke ${formatRupiah(an.smartRoundedSellPrice)})`
-                      : `Amankan margin etalase (${formatRupiah(an.smartRoundedSellPrice)})`}
-                  </span>
-                  <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-1 transition-transform shrink-0">
-                    <ArrowRight className="w-5 h-5 text-white" />
-                  </div>
-                </button>
+              <div className="text-right">
+                <span className="text-xs text-gray-600 font-extrabold uppercase block">Harga Terdeteksi</span>
+                <span className="text-xl font-black text-[#15803D] tabular-nums">
+                  {formatRupiah(sd.detectedPrice)}
+                </span>
               </div>
             </div>
-          );
-        })()}
 
-      </div>
+            {/* Product Details */}
+            <div>
+              <h2 className="text-[22px] font-black text-[#1A1A1A] leading-tight">
+                {mp.name}
+              </h2>
+              <p className="text-[16px] text-gray-700 font-bold mt-1">
+                Kategori: {mp.category}
+              </p>
+            </div>
+
+            {/* Financial Metrics Row */}
+            <div className="grid grid-cols-3 gap-2 bg-gray-100 p-3 rounded-lg border-2 border-gray-300 text-[#1A1A1A]">
+              <div>
+                <span className="text-xs font-bold text-gray-600 uppercase block">Modal (Nota)</span>
+                <div className="text-lg font-black text-[#1A1A1A] mt-0.5 tabular-nums">
+                  {formatRupiah(mp.buyPrice)}
+                </div>
+              </div>
+              <div>
+                <span className="text-xs font-bold text-gray-600 uppercase block">Margin Aktif</span>
+                <div className={`text-lg font-black mt-0.5 tabular-nums ${statusColorClass}`}>
+                  {an.activeMarginPercent.toFixed(1)}%
+                </div>
+              </div>
+              <div>
+                <span className="text-xs font-bold text-[#15803D] uppercase block">Saran Jual</span>
+                <div className="text-lg font-black text-[#15803D] mt-0.5 tabular-nums">
+                  {formatRupiah(an.smartRoundedSellPrice)}
+                </div>
+              </div>
+            </div>
+
+            {/* Action CTA Button */}
+            <button
+              onClick={() => {
+                if (scanResult.matchedProduct) onOpenAlertModal(scanResult.matchedProduct);
+              }}
+              className="w-full min-h-[60px] px-5 rounded-lg bg-[#15803D] hover:bg-[#15803D]/90 text-white font-extrabold text-lg flex items-center justify-between transition-colors cursor-pointer border-2 border-[#1A1A1A] shadow"
+            >
+              <span>
+                {an.status === 'DANGER'
+                  ? `Amankan margin (ubah ke ${formatRupiah(an.smartRoundedSellPrice)})`
+                  : `Amankan margin etalase (${formatRupiah(an.smartRoundedSellPrice)})`}
+              </span>
+              <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
+                <ArrowRight className="w-5 h-5 text-white" />
+              </div>
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 };
+
 

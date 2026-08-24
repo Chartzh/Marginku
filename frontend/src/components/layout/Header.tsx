@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { StoreSettings } from '@/types';
 import { Type, AlertOctagon, CheckCircle2, HelpCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import logoIcon from '@/assets/logo.png';
+import logoText from '@/assets/logo-wordmark.png';
 
 interface HeaderProps {
   settings: StoreSettings;
@@ -25,15 +27,19 @@ export const Header: React.FC<HeaderProps> = ({
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#E5E7EB] px-4 py-3 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
         <div className="flex items-center justify-between max-w-md mx-auto">
           {/* Brand Identity */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#1B6440] flex items-center justify-center text-white font-extrabold text-base shadow-sm">
-              <span className="font-black tracking-tighter">M</span>
-            </div>
+          <div className="flex items-center gap-2.5">
+            <img
+              src={logoIcon}
+              alt="Marginku"
+              className="w-10 h-10 object-contain"
+            />
             <div>
               <div className="flex items-center gap-1.5 leading-none">
-                <span className="text-base font-extrabold text-[#1A1D1E] tracking-tight">
-                  Marginku
-                </span>
+                <img
+                  src={logoText}
+                  alt="Marginku"
+                  className="h-5 w-auto object-contain"
+                />
                 <span className="bg-[#EBF5F0] text-[#1B6440] text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
                   AI
                 </span>

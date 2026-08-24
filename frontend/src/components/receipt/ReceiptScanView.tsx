@@ -352,55 +352,55 @@ export const ReceiptScanView: React.FC<ReceiptScanViewProps> = ({
   };
 
   return (
-    <div className="space-y-4 pb-20 text-[#1A1D1E] font-sans" style={{ backgroundColor: '#FFFFFF', minHeight: '100%' }}>
-      {/* 1. Screen Title */}
-      <div style={{ backgroundColor: '#15803D' }} className="px-4 pt-4 pb-5">
-        <div className="pt-1">
-          <h1 className="text-2xl font-extrabold text-white tracking-tight leading-snug">
+    <div className="space-y-6 pb-28 text-[#1A1A1A] font-sans bg-white min-h-screen">
+      {/* 1. Screen Header */}
+      <div className="-mx-4 -mt-4 mb-6 bg-[#15803D] p-5 text-white flex items-center justify-between shadow-md">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-white leading-none">
             Scan Nota Grosir
           </h1>
-          <p style={{ fontSize: 15, color: '#BBF7D0', fontWeight: 500, marginTop: 3 }}>
+          <p className="text-lg font-medium text-white/90 mt-1">
             Perbarui harga modal kulakan langsung dari struk agen belanja.
           </p>
         </div>
       </div>
 
-      {/* 2. Upload Zone Card (Clean White Surface) */}
-      <div className="rounded-3xl p-5 bg-white border border-[#E5E7EB] space-y-4 shadow-card">
-        <div className="flex items-center justify-between border-b border-[#F0F2F5] pb-3">
+      {/* 2. Upload Zone Card */}
+      <div className="bg-white border-2 border-[#1A1A1A] rounded-lg p-5 space-y-4 shadow">
+        <div className="flex items-center justify-between border-b-2 border-gray-200 pb-3">
           <div>
-            <div className="text-sm font-extrabold text-[#1A1D1E]">
+            <div className="text-lg font-black text-[#1A1A1A]">
               Ekstraksi Nota Agen Otomatis
             </div>
-            <div className="text-xs text-[#6B7280] mt-0.5">
+            <div className="text-base text-gray-700 font-bold mt-0.5">
               Mendeteksi barang kulakan & kenaikan harga beli
             </div>
           </div>
-          <div className="w-10 h-10 rounded-2xl bg-[#EBF5F0] border border-[#15803D] flex items-center justify-center text-[#1B6440]">
-            <Receipt className="w-5 h-5" />
+          <div className="w-12 h-12 rounded-lg bg-[#15803D] text-white flex items-center justify-center shrink-0 border-2 border-[#1A1A1A]">
+            <Receipt className="w-6 h-6" />
           </div>
         </div>
 
         {/* Real-time AI Progress Bar */}
         {isProcessing && (
-          <div className="p-3.5 rounded-2xl bg-[#EBF5F0] border border-[#D1E7DD] space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5 text-[#1B6440] font-bold">
-                <Sparkles className="w-4 h-4 animate-spin" />
-                <span className="text-xs">AI Gemini Vision OCR</span>
+          <div className="p-4 rounded-lg bg-emerald-50 border-2 border-[#15803D] space-y-2 text-[#1A1A1A]">
+            <div className="flex items-center justify-between text-base">
+              <div className="flex items-center gap-2 text-[#15803D] font-black">
+                <Sparkles className="w-5 h-5 animate-spin" />
+                <span>AI Gemini Vision OCR</span>
               </div>
-              <span className="text-[#1B6440] text-[11px] font-bold">
+              <span className="text-[#15803D] text-sm font-black">
                 Tahap {aiStageIndex + 1}/{AI_SCAN_STAGES.length}
               </span>
             </div>
 
-            <p className="text-xs text-[#1A1D1E] font-medium truncate">
+            <p className="text-base text-[#1A1A1A] font-extrabold truncate">
               {AI_SCAN_STAGES[aiStageIndex]}
             </p>
 
-            <div className="w-full bg-white h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-white h-3 rounded-lg border border-[#1A1A1A] overflow-hidden">
               <div
-                className="h-full bg-[#1B6440] transition-all duration-500 rounded-full"
+                className="h-full bg-[#15803D] transition-all duration-500 rounded-lg"
                 style={{
                   width: `${((aiStageIndex + 1) / AI_SCAN_STAGES.length) * 100}%`,
                 }}
@@ -414,16 +414,16 @@ export const ReceiptScanView: React.FC<ReceiptScanViewProps> = ({
           <button
             onClick={simulateReceiptScan}
             disabled={isProcessing}
-            className="h-[48px] px-4 rounded-full font-bold text-xs bg-[#15803D] hover:bg-[#154E30] text-white flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 active:scale-[0.98] shadow-floating"
+            className="min-h-[60px] px-4 rounded-lg bg-[#15803D] hover:bg-[#15803D]/90 text-white font-extrabold text-lg flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 border-2 border-[#1A1A1A] shadow"
           >
             {isProcessing ? (
               <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
+                <RefreshCw className="w-5 h-5 animate-spin" />
                 <span>Membaca...</span>
               </>
             ) : (
               <>
-                <FileText className="w-4 h-4 text-white" />
+                <FileText className="w-5 h-5 text-white" />
                 <span>Simulasi scan</span>
               </>
             )}
@@ -432,9 +432,9 @@ export const ReceiptScanView: React.FC<ReceiptScanViewProps> = ({
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isProcessing}
-            className="h-[48px] px-4 rounded-full font-bold text-xs bg-[#F4F6F5] hover:bg-[#EAECEB] text-[#1A1D1E] border border-[#E5E7EB] flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 active:scale-[0.98]"
+            className="min-h-[60px] px-4 rounded-lg bg-white hover:bg-gray-100 text-[#1A1A1A] font-extrabold text-lg flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 border-2 border-[#1A1A1A] shadow"
           >
-            <Upload className="w-4 h-4 text-[#6B7280]" />
+            <Upload className="w-5 h-5 text-[#1A1A1A]" />
             <span>Upload struk</span>
           </button>
           <input
@@ -447,82 +447,82 @@ export const ReceiptScanView: React.FC<ReceiptScanViewProps> = ({
         </div>
 
         {uploadError && (
-          <p className="text-xs text-[#DC2626] font-medium mt-1">{uploadError}</p>
+          <p className="text-base text-red-600 font-extrabold mt-1">{uploadError}</p>
         )}
       </div>
 
       {/* 3. Extracted Receipt Details Card */}
       {activeReceipt && (
-        <div className="rounded-3xl p-5 bg-white border border-[#E5E7EB] space-y-4 shadow-card">
+        <div className="bg-white border-2 rounded-lg p-5 space-y-5">
           {/* Header Row */}
-          <div className="flex items-start justify-between border-b border-[#F0F2F5] pb-3">
+          <div className="flex items-start justify-between border-b-2 border-gray-200 pb-4">
             {isEditingHeader ? (
-              <div className="space-y-2 w-full pr-2">
+              <div className="space-y-3 w-full pr-2">
                 <input
                   type="text"
                   value={headerForm.storeName}
                   onChange={(e) => setHeaderForm({ ...headerForm, storeName: e.target.value })}
-                  className="w-full bg-[#F4F6F5] border border-[#E5E7EB] text-xs font-bold text-[#1A1D1E] px-3.5 py-2 rounded-xl focus:outline-none focus:border-[#1B6440]"
+                  className="w-full h-[52px] bg-white border-2 border-[#1A1A1A] text-lg font-bold text-[#1A1A1A] px-4 rounded-lg focus:outline-none focus:border-[#15803D]"
                   placeholder="Nama Supplier"
                 />
                 <input
                   type="text"
                   value={headerForm.date}
                   onChange={(e) => setHeaderForm({ ...headerForm, date: e.target.value })}
-                  className="w-full bg-[#F4F6F5] border border-[#E5E7EB] text-xs text-[#6B7280] px-3.5 py-2 rounded-xl focus:outline-none focus:border-[#1B6440]"
+                  className="w-full h-[52px] bg-white border-2 border-[#1A1A1A] text-base text-[#1A1A1A] font-bold px-4 rounded-lg focus:outline-none focus:border-[#15803D]"
                   placeholder="Tanggal Nota"
                 />
                 <div className="flex items-center gap-2 pt-1">
                   <button
                     onClick={handleSaveHeader}
-                    className="px-3.5 py-1.5 bg-[#15803D] hover:bg-[#154E30] text-white text-xs font-bold rounded-full flex items-center gap-1 cursor-pointer"
+                    className="h-[44px] px-4 bg-[#15803D] hover:bg-[#15803D]/90 text-white text-base font-extrabold rounded-lg border-2 border-[#1A1A1A] flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Check className="w-3.5 h-3.5" /> Simpan
+                    <Check className="w-5 h-5" /> Simpan
                   </button>
                   <button
                     onClick={() => setIsEditingHeader(false)}
-                    className="px-3.5 py-1.5 bg-[#F4F6F5] text-[#6B7280] text-xs rounded-full border border-[#E5E7EB] flex items-center gap-1 cursor-pointer"
+                    className="h-[44px] px-4 bg-white text-[#1A1A1A] text-base font-extrabold rounded-lg border-2 border-[#1A1A1A] hover:bg-gray-100 flex items-center gap-1.5 cursor-pointer"
                   >
-                    <X className="w-3.5 h-3.5" /> Batal
+                    <X className="w-5 h-5" /> Batal
                   </button>
                 </div>
               </div>
             ) : (
               <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-extrabold text-[#1A1D1E]">
+                <div className="flex items-start gap-2">
+                  <h2 className="text-2xl font-black text-[#1A1A1A]">
                     {activeReceipt.storeName}
                   </h2>
                   <button
                     onClick={handleStartEditHeader}
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-[#6B7280] hover:text-[#1A1D1E] hover:bg-[#F4F6F5] transition-colors cursor-pointer"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-[#1A1A1A] hover:bg-gray-100 transition-colors cursor-pointer shrink-0 mt-5"
                     title="Edit info supplier"
                   >
-                    <Pencil className="w-3.5 h-3.5" />
+                    <Pencil className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="text-xs text-[#6B7280] mt-0.5 tabular-nums">
+                <div className="text-base text-gray-700 font-bold mt-1 tabular-nums">
                   {activeReceipt.date} • {activeReceipt.items.length} Barang Terdeteksi
                 </div>
               </div>
             )}
             <div className="text-right shrink-0">
-              <span className="text-[11px] text-[#6B7280] font-medium block">Total Belanja</span>
-              <div className="text-lg font-extrabold text-[#15803D] tabular-nums">
+              <span className="text-xs text-gray-600 font-extrabold uppercase block">Total Belanja</span>
+              <div className="text-[24px] font-black text-[#15803D] tabular-nums">
                 {formatRupiah(activeReceipt.totalAmount)}
               </div>
             </div>
           </div>
 
           {/* Edit Instruction Notice */}
-          <div className="flex items-center gap-2 text-xs text-[#6B7280] bg-[#F8F9FA] px-3.5 py-2.5 rounded-2xl border border-[#E5E7EB]">
-            <span className="text-amber-500">💡</span>
+          <div className="flex items-center gap-2 text-base text-[#1A1A1A] font-bold bg-amber-50 px-4 py-3 rounded-lg border-2 border-amber-400">
+            <span className="text-amber-600 text-lg">💡</span>
             <span>Tekan ikon pensil pada barang untuk mengoreksi pembacaan AI.</span>
           </div>
 
           {/* Item Breakdown List */}
-          <div className="space-y-3">
-            {activeReceipt.items.map((item) => {
+          <div className="flex flex-col border-2 rounded-lg overflow-hidden divide-y-2 divide-gray-200">
+            {activeReceipt.items.map((item, index) => {
               const isEditing = editingItemId === item.id;
               const matchName = item.matchedProductName || item.rawName;
               const currentProduct = products.find(
@@ -532,20 +532,21 @@ export const ReceiptScanView: React.FC<ReceiptScanViewProps> = ({
               const oldBuyPrice = currentProduct?.buyPrice || item.unitBuyPrice;
               const priceIncreased = item.unitBuyPrice > oldBuyPrice;
               const selisihKenaikan = item.unitBuyPrice - oldBuyPrice;
+              const isEven = index % 2 === 0;
 
               if (isEditing) {
                 return (
                   <div
                     key={item.id}
-                    className="p-4 rounded-2xl bg-[#F8F9FA] border border-[#1B6440] space-y-3"
+                    className="p-5 bg-amber-50/60 border-b-2 border-gray-200 space-y-4 text-[#1A1A1A]"
                   >
-                    <div className="text-xs font-bold text-[#1B6440] flex items-center gap-1.5">
-                      <Edit3 className="w-4 h-4" />
+                    <div className="text-base font-black text-[#15803D] flex items-center gap-2">
+                      <Edit3 className="w-5 h-5" />
                       <span>Koreksi Hasil Pemindaian</span>
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[11px] text-[#6B7280] font-medium block">
+                      <label className="text-base text-[#1A1A1A] font-extrabold block">
                         Nama Barang di Struk / Katalog:
                       </label>
                       <input
@@ -554,14 +555,14 @@ export const ReceiptScanView: React.FC<ReceiptScanViewProps> = ({
                         onChange={(e) =>
                           setEditForm({ ...editForm!, rawName: e.target.value })
                         }
-                        className="w-full bg-white border border-[#E5E7EB] text-xs text-[#1A1D1E] p-2.5 rounded-xl focus:outline-none focus:border-[#1B6440]"
+                        className="w-full h-[60px] bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] font-bold px-4 rounded-lg focus:outline-none focus:border-[#15803D]"
                         placeholder="Contoh: Indomie Goreng 85g"
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="text-[11px] text-[#6B7280] font-medium block">
+                        <label className="text-base text-[#1A1A1A] font-extrabold block">
                           Jumlah (Qty):
                         </label>
                         <input
@@ -571,11 +572,11 @@ export const ReceiptScanView: React.FC<ReceiptScanViewProps> = ({
                           onChange={(e) =>
                             setEditForm({ ...editForm!, qty: Number(e.target.value) })
                           }
-                          className="w-full bg-white border border-[#E5E7EB] text-xs text-[#1A1D1E] p-2.5 rounded-xl focus:outline-none focus:border-[#1B6440] tabular-nums"
+                          className="w-full h-[60px] bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] font-bold px-4 rounded-lg focus:outline-none focus:border-[#15803D] tabular-nums"
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[11px] text-[#6B7280] font-medium block">
+                        <label className="text-base text-[#1A1A1A] font-extrabold block">
                           Harga Modal Satuan (Rp):
                         </label>
                         <input
@@ -589,39 +590,39 @@ export const ReceiptScanView: React.FC<ReceiptScanViewProps> = ({
                               unitBuyPrice: Number(e.target.value),
                             })
                           }
-                          className="w-full bg-white border border-[#E5E7EB] text-xs text-[#1A1D1E] p-2.5 rounded-xl focus:outline-none focus:border-[#1B6440] tabular-nums"
+                          className="w-full h-[60px] bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] font-bold px-4 rounded-lg focus:outline-none focus:border-[#15803D] tabular-nums"
                         />
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs text-[#6B7280] pt-1">
+                    <div className="flex items-center justify-between text-base font-bold text-gray-700 bg-white p-3 rounded-lg border border-gray-300">
                       <span>Subtotal Koreksi:</span>
-                      <span className="font-bold text-[#1A1D1E] tabular-nums">
+                      <span className="font-black text-xl text-[#1A1A1A] tabular-nums">
                         {formatRupiah((editForm?.qty || 0) * (editForm?.unitBuyPrice || 0))}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-[#E5E7EB]">
+                    <div className="flex items-center justify-between pt-2 border-t-2 border-gray-200">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleSaveEditItem(item.id)}
-                          className="px-4 py-2 bg-[#15803D] hover:bg-[#154E30] text-white text-xs font-bold rounded-full flex items-center gap-1 cursor-pointer transition-colors"
+                          className="h-[52px] px-5 bg-[#15803D] hover:bg-[#15803D]/90 text-white text-base font-extrabold rounded-lg border-2 border-[#1A1A1A] flex items-center gap-1.5 cursor-pointer transition-colors"
                         >
-                          <Check className="w-3.5 h-3.5" /> Simpan
+                          <Check className="w-5 h-5" /> Simpan
                         </button>
                         <button
                           onClick={handleCancelEditItem}
-                          className="px-4 py-2 bg-white text-[#6B7280] text-xs font-medium rounded-full border border-[#E5E7EB] flex items-center gap-1 cursor-pointer transition-colors"
+                          className="h-[52px] px-5 bg-white text-[#1A1A1A] text-base font-extrabold rounded-lg border-2 border-[#1A1A1A] hover:bg-gray-100 flex items-center gap-1.5 cursor-pointer transition-colors"
                         >
-                          <X className="w-3.5 h-3.5" /> Batal
+                          <X className="w-5 h-5" /> Batal
                         </button>
                       </div>
                       <button
                         onClick={() => handleDeleteItem(item.id)}
-                        className="px-3.5 py-2 text-[#DC2626] hover:bg-[#FEE2E2] text-xs font-bold rounded-full flex items-center gap-1 cursor-pointer transition-colors"
+                        className="h-[52px] px-4 bg-red-600 hover:bg-red-700 text-white text-base font-extrabold rounded-lg border-2 border-[#1A1A1A] flex items-center gap-1.5 cursor-pointer transition-colors"
                         title="Hapus barang ini dari nota"
                       >
-                        <Trash2 className="w-3.5 h-3.5" /> Hapus
+                        <Trash2 className="w-5 h-5" /> Hapus
                       </button>
                     </div>
                   </div>
@@ -631,58 +632,60 @@ export const ReceiptScanView: React.FC<ReceiptScanViewProps> = ({
               return (
                 <div
                   key={item.id}
-                  className="p-4 rounded-2xl bg-[#F8F9FA] border border-[#E5E7EB] space-y-3 group transition-colors hover:border-[#1B6440]/40"
+                  className={`p-5 flex flex-col gap-3 transition-colors ${
+                    isEven ? 'bg-[#F9F9F9]' : 'bg-[#FFFFFF]'
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h3 className="text-sm font-bold text-[#1A1D1E]">
+                      <h3 className="text-[20px] font-black text-[#1A1A1A] leading-tight">
                         {matchName}
                       </h3>
-                      <div className="text-xs text-[#6B7280] mt-0.5">
+                      <div className="text-[16px] text-gray-700 font-bold mt-1">
                         {item.qty} {item.unit}
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
                       <div className="text-right">
-                        <span className="text-[10px] text-[#6B7280] block font-medium">Modal Baru</span>
-                        <div className="text-sm font-bold text-[#1A1D1E] tabular-nums">
+                        <span className="text-xs text-gray-600 font-extrabold uppercase block">Modal Baru</span>
+                        <div className="text-xl font-black text-[#1A1A1A] tabular-nums">
                           {formatRupiah(item.unitBuyPrice)}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 ml-1">
+                      <div className="flex items-center gap-1.5 ml-1">
                         <button
                           onClick={() => handleStartEditItem(item)}
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-[#6B7280] hover:text-[#1A1D1E] hover:bg-white transition-colors cursor-pointer"
+                          className="w-10 h-10 rounded-lg border-2 border-[#1A1A1A] flex items-center justify-center text-[#1A1A1A] hover:bg-gray-200 transition-colors cursor-pointer bg-white"
                           title="Edit item ini"
                         >
-                          <Pencil className="w-3.5 h-3.5" />
+                          <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteItem(item.id)}
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-[#6B7280] hover:text-[#DC2626] hover:bg-[#FEE2E2] transition-colors cursor-pointer"
+                          className="w-10 h-10 rounded-lg border-2 border-red-600 flex items-center justify-center text-red-600 hover:bg-red-50 transition-colors cursor-pointer bg-white"
                           title="Hapus item ini"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2.5 border-t border-[#E5E7EB] text-xs">
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-200 text-base">
                     {priceIncreased ? (
-                      <span className="px-3 py-1 rounded-full bg-[#FEE2E2] border border-[#FECACA] text-[#DC2626] font-bold text-[11px] inline-flex items-center gap-1 tabular-nums">
-                        <AlertTriangle className="w-3 h-3 shrink-0" />
+                      <span className="px-3 py-1 rounded-lg bg-red-100 border-2 border-red-600 text-red-600 font-black text-sm inline-flex items-center gap-1.5 tabular-nums">
+                        <AlertTriangle className="w-4 h-4 shrink-0" />
                         <span>Modal naik +{formatRupiah(selisihKenaikan)}/item</span>
                       </span>
                     ) : (
-                      <span className="px-3 py-1 rounded-full bg-[#EBF5F0] border border-[#D1E7DD] text-[#1B6440] font-medium text-[11px] inline-flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-[#1B6440]" />
+                      <span className="px-3 py-1 rounded-lg bg-emerald-100 border-2 border-[#15803D] text-[#15803D] font-black text-sm inline-flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-[#15803D]" />
                         <span>Modal tetap</span>
                       </span>
                     )}
 
-                    <span className="text-xs text-[#6B7280] tabular-nums font-bold">
-                      Subtotal: <strong className="text-[#1A1D1E]">{formatRupiah(item.totalBuyPrice)}</strong>
+                    <span className="text-base text-gray-700 font-bold tabular-nums">
+                      Subtotal: <strong className="text-[#1A1A1A] font-black text-lg">{formatRupiah(item.totalBuyPrice)}</strong>
                     </span>
                   </div>
                 </div>
@@ -693,9 +696,9 @@ export const ReceiptScanView: React.FC<ReceiptScanViewProps> = ({
           {/* Add Item Button */}
           <button
             onClick={handleAddItem}
-            className="w-full h-[46px] rounded-full border border-dashed border-[#D1D5DB] bg-[#F8F9FA] hover:bg-[#EBF5F0] hover:border-[#1B6440] text-xs font-bold text-[#1B6440] flex items-center justify-center gap-2 transition-all cursor-pointer"
+            className="w-full h-[60px] rounded-lg border-2 border-dashed border-[#1A1A1A] bg-white hover:bg-emerald-50 text-base font-extrabold text-[#15803D] flex items-center justify-center gap-2 transition-colors cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-5 h-5 stroke-[3]" />
             <span>Tambah Barang Manual</span>
           </button>
 
@@ -703,26 +706,27 @@ export const ReceiptScanView: React.FC<ReceiptScanViewProps> = ({
           <button
             onClick={handleSyncAllPrices}
             disabled={syncApplied || isSyncingSupabase}
-            className={`w-full h-[52px] px-5 rounded-full font-bold text-xs flex items-center justify-between transition-all cursor-pointer shadow-floating active:scale-[0.98] group ${syncApplied
-              ? 'bg-[#EBF5F0] border border-[#D1E7DD] text-[#1B6440]'
-              : 'bg-[#15803D] hover:bg-[#154E30] text-white'
-              }`}
+            className={`w-full min-h-[60px] px-5 rounded-lg font-extrabold text-lg flex items-center justify-between transition-colors cursor-pointer border-2 border-[#1A1A1A] shadow disabled:opacity-75 disabled:cursor-not-allowed ${
+              syncApplied
+                ? 'bg-emerald-100 text-[#15803D]'
+                : 'bg-[#15803D] hover:bg-[#15803D]/90 text-white'
+            }`}
           >
             {isSyncingSupabase ? (
               <div className="flex items-center gap-2 justify-center w-full">
-                <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                <RefreshCw className="w-5 h-5 animate-spin text-white" />
                 <span>Menyimpan ke database katalog...</span>
               </div>
             ) : syncApplied ? (
               <div className="flex items-center justify-center w-full gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#1B6440]" />
+                <CheckCircle2 className="w-6 h-6 text-[#15803D]" />
                 <span>Seluruh harga modal telah disinkronkan</span>
               </div>
             ) : (
               <>
                 <span>Sinkronkan ke database warung ({activeReceipt.items.length} barang)</span>
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-0.5 transition-transform">
-                  <ArrowRight className="w-4 h-4 text-white" />
+                <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
+                  <ArrowRight className="w-5 h-5 text-white" />
                 </div>
               </>
             )}
