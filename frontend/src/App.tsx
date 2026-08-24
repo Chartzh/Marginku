@@ -142,24 +142,6 @@ const AppContent: React.FC = () => {
     }
   }, [toast.visible]);
 
-  /* =========================================================================
-   * AUTH GATE (DI-KOMENTARI SEMENTARA UNTUK PREVIEW LAYAR UTAMA TOKO)
-   * Aktifkan kembali baris di bawah ini jika ingin menguji login & register:
-   * =========================================================================
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[#F8F9FA] text-[#1A1D1E] flex flex-col items-center justify-center space-y-3 font-sans">
-        <RefreshCw className="w-8 h-8 animate-spin text-[#1B6440]" />
-        <p className="text-xs font-bold text-[#6B7280]">Memuat sesi Marginku...</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <AuthPage onSuccess={() => fetchKatalog()} />;
-  }
-  ========================================================================= */
-
   // Hitung jumlah produk bahaya
   const dangerCount = products.filter((p) => {
     const calc = calculateMargin(
@@ -172,54 +154,58 @@ const AppContent: React.FC = () => {
     return calc.status === 'DANGER';
   }).length;
 
-  // Aksi Menerima Rekomendasi (Pisahkan setAuditLogs dari setProducts callback untuk hindari duplikasi)
-  const handleAcceptPrice = (productId: string, newPrice: number) => {
-    const targetProduct = products.find((p) => p.id === productId);
-    if (!targetProduct) return;
+  // Aksi Menerima Rekomendasi
+  const handleAcceptPrice = (productId: string, newPrice: number, name?: string) => {
+    const prod = products.find((p) => p.id === productId);
+    if (!prod) return;
 
-    const oldSellPrice = targetProduct.currentSellPrice;
+    const targetName = name !== undefined && name.trim() !== '' ? name.trim() : prod.name;
+    const oldSellPrice = prod.currentSellPrice;
+
     const oldCalc = calculateMargin(
-      targetProduct.buyPrice,
+      prod.buyPrice,
       oldSellPrice,
-      targetProduct.targetMarginPercent || settings.defaultTargetMarginPercent,
+      prod.targetMarginPercent || settings.defaultTargetMarginPercent,
       settings.roundingStep,
       settings.dangerThresholdPercent
     );
     const newCalc = calculateMargin(
-      targetProduct.buyPrice,
+      prod.buyPrice,
       newPrice,
-      targetProduct.targetMarginPercent || settings.defaultTargetMarginPercent,
+      prod.targetMarginPercent || settings.defaultTargetMarginPercent,
       settings.roundingStep,
       settings.dangerThresholdPercent
     );
 
     const newLog: PriceAuditLog = {
-      id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      productId: targetProduct.id,
-      productName: targetProduct.name,
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      productId: prod.id,
+      productName: targetName,
       oldPrice: oldSellPrice,
       newPrice,
-      buyPrice: targetProduct.buyPrice,
+      buyPrice: prod.buyPrice,
       oldMarginPercent: oldCalc.activeMarginPercent,
       newMarginPercent: newCalc.activeMarginPercent,
       actionType: 'ACCEPT_RECOMMENDATION',
       timestamp: new Date().toISOString(),
-      userNote: `Rekomendasi harga baru diterapkan (Target ${
-        targetProduct.targetMarginPercent || settings.defaultTargetMarginPercent
-      }%)`,
+      userNote: `Rekomendasi harga baru diterapkan (Target ${prod.targetMarginPercent || settings.defaultTargetMarginPercent}%)`,
     };
 
-    // Update products
-    setProducts((prev) =>
-      prev.map((prod) =>
-        prod.id === productId
-          ? { ...prod, currentSellPrice: newPrice, lastUpdated: new Date().toISOString() }
-          : prod
-      )
-    );
-
-    // Update audit logs secara terpisah
     setAuditLogs((prevLogs) => [newLog, ...prevLogs]);
+
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id === productId) {
+          return {
+            ...p,
+            name: targetName,
+            currentSellPrice: newPrice,
+            lastUpdated: new Date().toISOString(),
+          };
+        }
+        return p;
+      })
+    );
 
     // Sinkronisasi ke Supabase
     if (user?.id) {
@@ -228,50 +214,61 @@ const AppContent: React.FC = () => {
         .update({
           harga_jual: newPrice,
           target_margin_persen:
-            targetProduct.targetMarginPercent || settings.defaultTargetMarginPercent,
+            prod.targetMarginPercent || settings.defaultTargetMarginPercent,
         })
         .eq('user_id', user.id)
-        .ilike('nama', targetProduct.name)
+        .ilike('nama', targetName)
         .then(({ error }) => {
           if (error) console.error('Supabase update price error:', error.message);
         });
     }
 
     setToast({
-      message: `Harga ${targetProduct.name} diubah ke ${formatRupiah(newPrice)}`,
-      previousPrice: { productId, price: oldSellPrice, name: targetProduct.name },
+      message: `Harga ${targetName} diubah ke ${formatRupiah(newPrice)}`,
+      previousPrice: { productId, price: oldSellPrice, name: targetName },
       visible: true,
     });
   };
 
-  // Aksi Penyesuaian Manual (Pisahkan setAuditLogs dari setProducts callback)
-  const handleOverridePrice = (productId: string, overridePrice: number, userNote?: string) => {
-    const targetProduct = products.find((p) => p.id === productId);
-    if (!targetProduct) return;
+  // Aksi Penyesuaian Manual
+  const handleOverridePrice = (
+    productId: string,
+    overridePrice: number,
+    category?: string,
+    stock?: number,
+    name?: string,
+    userNote?: string,
+    unit?: string,
+    buyPrice?: number
+  ) => {
+    const prod = products.find((p) => p.id === productId);
+    if (!prod) return;
 
-    const oldSellPrice = targetProduct.currentSellPrice;
+    const targetName = name !== undefined && name.trim() !== '' ? name.trim() : prod.name;
+    const oldSellPrice = prod.currentSellPrice;
+
     const oldCalc = calculateMargin(
-      targetProduct.buyPrice,
+      prod.buyPrice,
       oldSellPrice,
-      targetProduct.targetMarginPercent || settings.defaultTargetMarginPercent,
+      prod.targetMarginPercent || settings.defaultTargetMarginPercent,
       settings.roundingStep,
       settings.dangerThresholdPercent
     );
     const newCalc = calculateMargin(
-      targetProduct.buyPrice,
+      buyPrice !== undefined ? buyPrice : prod.buyPrice,
       overridePrice,
-      targetProduct.targetMarginPercent || settings.defaultTargetMarginPercent,
+      prod.targetMarginPercent || settings.defaultTargetMarginPercent,
       settings.roundingStep,
       settings.dangerThresholdPercent
     );
 
     const newLog: PriceAuditLog = {
-      id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      productId: targetProduct.id,
-      productName: targetProduct.name,
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      productId: prod.id,
+      productName: targetName,
       oldPrice: oldSellPrice,
       newPrice: overridePrice,
-      buyPrice: targetProduct.buyPrice,
+      buyPrice: buyPrice !== undefined ? buyPrice : prod.buyPrice,
       oldMarginPercent: oldCalc.activeMarginPercent,
       newMarginPercent: newCalc.activeMarginPercent,
       actionType: 'MANUAL_OVERRIDE',
@@ -279,15 +276,25 @@ const AppContent: React.FC = () => {
       userNote: userNote || 'Penyesuaian manual pemilik warung',
     };
 
-    setProducts((prev) =>
-      prev.map((prod) =>
-        prod.id === productId
-          ? { ...prod, currentSellPrice: overridePrice, lastUpdated: new Date().toISOString() }
-          : prod
-      )
-    );
-
     setAuditLogs((prevLogs) => [newLog, ...prevLogs]);
+
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id === productId) {
+          return {
+            ...p,
+            name: targetName,
+            currentSellPrice: overridePrice,
+            category: category !== undefined ? category : p.category,
+            stockQty: stock !== undefined ? stock : p.stockQty,
+            unit: unit !== undefined ? unit : p.unit,
+            buyPrice: buyPrice !== undefined ? buyPrice : p.buyPrice,
+            lastUpdated: new Date().toISOString(),
+          };
+        }
+        return p;
+      })
+    );
 
     // Sinkronisasi ke Supabase
     if (user?.id) {
@@ -297,15 +304,15 @@ const AppContent: React.FC = () => {
           harga_jual: overridePrice,
         })
         .eq('user_id', user.id)
-        .ilike('nama', targetProduct.name)
+        .ilike('nama', targetName)
         .then(({ error }) => {
           if (error) console.error('Supabase override price error:', error.message);
         });
     }
 
     setToast({
-      message: `Harga ${targetProduct.name} diatur manual ke ${formatRupiah(overridePrice)}`,
-      previousPrice: { productId, price: oldSellPrice, name: targetProduct.name },
+      message: `Harga ${targetName} diatur manual ke ${formatRupiah(overridePrice)}`,
+      previousPrice: { productId, price: oldSellPrice, name: targetName },
       visible: true,
     });
   };
@@ -451,6 +458,16 @@ const AppContent: React.FC = () => {
     });
   };
 
+  // Hapus produk dari katalog
+  const handleDeleteProducts = (productIds: string[]) => {
+    setProducts((prev) => prev.filter((p) => !productIds.includes(p.id)));
+  };
+
+  // Hapus log riwayat
+  const handleDeleteLogs = (logIds: string[]) => {
+    setAuditLogs((prev) => prev.filter((log) => !logIds.includes(log.id)));
+  };
+
   return (
     <MobileShell>
       {/* Global Unified Header */}
@@ -497,11 +514,15 @@ const AppContent: React.FC = () => {
               );
             }}
             onNavigateToScanReceipt={() => setActiveTab('SCAN_RECEIPT')}
+            onDeleteProducts={handleDeleteProducts}
           />
         </div>
 
         <div className={activeTab === 'HISTORY' ? 'block' : 'hidden'}>
-          <AuditHistoryView logs={auditLogs} />
+          <AuditHistoryView
+            logs={auditLogs}
+            onDeleteLogs={handleDeleteLogs}
+          />
         </div>
 
         <div className={activeTab === 'SETTINGS' ? 'block' : 'hidden'}>

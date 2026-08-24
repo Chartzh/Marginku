@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ProductItem, StoreSettings, MarginStatus } from '@/types';
 import { calculateMargin } from '@/lib/math';
 import { formatRupiah } from '@/lib/utils';
@@ -10,12 +10,15 @@ import {
   CheckCircle2,
   Package,
   FileText,
-  X,
   ChevronRight,
-  Save,
-  TrendingUp,
-  TrendingDown,
+  Trash2,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface CatalogViewProps {
   products: ProductItem[];
@@ -24,469 +27,37 @@ interface CatalogViewProps {
   onAddNewProduct?: (newProduct: Omit<ProductItem, 'id' | 'lastUpdated'>) => void;
   onUpdateProduct?: (productId: string, updates: Partial<ProductItem>) => void;
   onNavigateToScanReceipt?: () => void;
+  onDeleteProducts?: (productIds: string[]) => void;
 }
 
-/* ─────────────────────────────────────────────
-   STATUS CONFIG
-────────────────────────────────────────────── */
 const STATUS_LABEL: Record<MarginStatus, string> = {
   DANGER: 'Rugi',
   WARNING: 'Tipis',
   HEALTHY: 'Aman',
 };
 
-const CATEGORIES = ['Sembako', 'Makanan Instan', 'Minuman', 'Kebutuhan Rumah', 'Snack', 'Lainnya'];
-const UNITS = ['pcs', 'bungkus', 'kg', 'renceng', 'kotak', 'karung', 'pouch', 'botol'];
-
-/* ─────────────────────────────────────────────
-   PRODUCT DETAIL / EDIT PANEL
-────────────────────────────────────────────── */
-interface ProductDetailPanelProps {
-  product: ProductItem;
-  settings: StoreSettings;
-  onClose: () => void;
-  onSave: (productId: string, updates: Partial<ProductItem>) => void;
-}
-
-const ProductDetailPanel: React.FC<ProductDetailPanelProps> = ({
-  product,
-  settings,
-  onClose,
-  onSave,
-}) => {
-  const [name, setName] = useState(product.name);
-  const [category, setCategory] = useState(product.category);
-  const [stockQty, setStockQty] = useState(String(product.stockQty ?? 0));
-  const [unit, setUnit] = useState(product.unit);
-  const [buyPrice, setBuyPrice] = useState(String(product.buyPrice));
-  const [sellPrice, setSellPrice] = useState(String(product.currentSellPrice));
-
-  const buyNum = parseInt(buyPrice, 10) || 0;
-  const sellNum = parseInt(sellPrice, 10) || 0;
-  const profitNetto = sellNum - buyNum;
-  const marginPercent = sellNum > 0 ? ((sellNum - buyNum) / sellNum) * 100 : 0;
-
-  const isProfit = profitNetto >= 0;
-
-  const handleSave = () => {
-    if (!name.trim() || buyNum <= 0 || sellNum <= 0) return;
-    onSave(product.id, {
-      name: name.trim(),
-      category,
-      stockQty: parseInt(stockQty, 10) || 0,
-      unit,
-      buyPrice: buyNum,
-      currentSellPrice: sellNum,
-      lastUpdated: new Date().toISOString(),
-    });
-    onClose();
-  };
-
-  // Lock body scroll when panel is open
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
-  }, []);
-
-  return (
-    <>
-      {/* Overlay */}
-      <div
-        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Slide-in Panel */}
-      <div
-        className="fixed bottom-0 inset-x-0 z-50 max-w-md mx-auto bg-white rounded-t-3xl shadow-2xl"
-        style={{ maxHeight: '92vh', overflowY: 'auto' }}
-      >
-        {/* Panel Handle */}
-        <div className="flex items-center justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-gray-200" />
-        </div>
-
-        {/* Panel Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1A1A1A', lineHeight: 1.2 }}>
-              Edit Produk
-            </h2>
-            <p style={{ fontSize: 14, color: '#6B7280', marginTop: 2 }}>
-              Ubah detail &amp; harga barang
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors cursor-pointer"
-            aria-label="Tutup panel"
-          >
-            <X className="w-5 h-5 text-gray-600" />
-          </button>
-        </div>
-
-        <div className="px-5 py-4 space-y-4 pb-32">
-          {/* Nama Produk */}
-          <div>
-            <label style={{ fontSize: 16, fontWeight: 700, color: '#1A1A1A', display: 'block', marginBottom: 8 }}>
-              Nama Produk
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Nama barang..."
-              style={{ fontSize: 16, height: 60 }}
-              className="w-full px-4 rounded-2xl bg-gray-50 border-2 border-gray-200 text-gray-900 font-medium focus:outline-none focus:border-green-600 transition-colors"
-            />
-          </div>
-
-          {/* Kategori */}
-          <div>
-            <label style={{ fontSize: 16, fontWeight: 700, color: '#1A1A1A', display: 'block', marginBottom: 8 }}>
-              Kategori
-            </label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              style={{ fontSize: 16, height: 60 }}
-              className="w-full px-4 rounded-2xl bg-gray-50 border-2 border-gray-200 text-gray-900 font-medium focus:outline-none focus:border-green-600 transition-colors cursor-pointer"
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Stok & Satuan */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label style={{ fontSize: 16, fontWeight: 700, color: '#1A1A1A', display: 'block', marginBottom: 8 }}>
-                Total Stok
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={stockQty}
-                onChange={(e) => setStockQty(e.target.value)}
-                style={{ fontSize: 18, height: 60, fontWeight: 700 }}
-                className="w-full px-4 rounded-2xl bg-gray-50 border-2 border-gray-200 text-gray-900 tabular-nums focus:outline-none focus:border-green-600 transition-colors"
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: 16, fontWeight: 700, color: '#1A1A1A', display: 'block', marginBottom: 8 }}>
-                Nama Stok
-              </label>
-              <select
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                style={{ fontSize: 16, height: 60 }}
-                className="w-full px-4 rounded-2xl bg-gray-50 border-2 border-gray-200 text-gray-900 font-medium focus:outline-none focus:border-green-600 transition-colors cursor-pointer"
-              >
-                {UNITS.map((u) => (
-                  <option key={u} value={u}>{u}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Harga Modal */}
-          <div>
-            <label style={{ fontSize: 16, fontWeight: 700, color: '#1A1A1A', display: 'block', marginBottom: 8 }}>
-              Harga Modal (Rp)
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={buyPrice}
-              onChange={(e) => setBuyPrice(e.target.value)}
-              placeholder="Contoh: 16500"
-              style={{ fontSize: 20, height: 60, fontWeight: 700 }}
-              className="w-full px-4 rounded-2xl bg-gray-50 border-2 border-gray-200 text-gray-900 tabular-nums focus:outline-none focus:border-green-600 transition-colors"
-            />
-          </div>
-
-          {/* Harga Jual */}
-          <div>
-            <label style={{ fontSize: 16, fontWeight: 700, color: '#1A1A1A', display: 'block', marginBottom: 8 }}>
-              Harga Jual (Rp)
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={sellPrice}
-              onChange={(e) => setSellPrice(e.target.value)}
-              placeholder="Contoh: 19500"
-              style={{ fontSize: 20, height: 60, fontWeight: 700, color: '#15803D' }}
-              className="w-full px-4 rounded-2xl bg-green-50 border-2 border-green-200 tabular-nums focus:outline-none focus:border-green-600 transition-colors"
-            />
-          </div>
-
-          {/* Kalkulasi Otomatis */}
-          <div className="rounded-2xl border-2 border-dashed overflow-hidden"
-            style={{ borderColor: isProfit ? '#15803D' : '#DC2626' }}>
-            <div
-              className="px-4 py-2"
-              style={{ backgroundColor: isProfit ? '#F0FDF4' : '#FEF2F2' }}
-            >
-              <p style={{ fontSize: 14, fontWeight: 700, color: isProfit ? '#15803D' : '#DC2626' }}>
-                Kalkulasi Otomatis
-              </p>
-            </div>
-            <div className="px-4 py-4 space-y-3 bg-white">
-              <div className="flex items-center justify-between">
-                <span style={{ fontSize: 16, color: '#6B7280', fontWeight: 600 }}>
-                  Profit Netto (Rp)
-                </span>
-                <span style={{ fontSize: 22, fontWeight: 800, color: isProfit ? '#15803D' : '#DC2626' }}
-                  className="tabular-nums flex items-center gap-1">
-                  {isProfit
-                    ? <TrendingUp className="w-5 h-5" />
-                    : <TrendingDown className="w-5 h-5" />}
-                  {formatRupiah(Math.abs(profitNetto))}
-                </span>
-              </div>
-              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                <span style={{ fontSize: 16, color: '#6B7280', fontWeight: 600 }}>
-                  Margin (%)
-                </span>
-                <span
-                  style={{ fontSize: 32, fontWeight: 900, color: isProfit ? '#15803D' : '#DC2626' }}
-                  className="tabular-nums"
-                >
-                  {marginPercent.toFixed(1)}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Save Button - Fixed at bottom of panel */}
-        <div
-          className="fixed bottom-0 inset-x-0 max-w-md mx-auto px-5 py-4 bg-white border-t border-gray-100"
-          style={{ zIndex: 60 }}
-        >
-          <button
-            onClick={handleSave}
-            disabled={!name.trim() || buyNum <= 0 || sellNum <= 0}
-            style={{ height: 60, fontSize: 18, fontWeight: 800 }}
-            className="w-full rounded-2xl bg-[#15803D] hover:bg-[#166534] text-white flex items-center justify-center gap-3 transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-          >
-            <Save className="w-5 h-5" />
-            <span>Simpan Perubahan</span>
-          </button>
-        </div>
-      </div>
-    </>
-  );
-};
-
-//ADD PRODUCT MODAL
-interface AddProductModalProps {
-  settings: StoreSettings;
-  onClose: () => void;
-  onAdd: (product: Omit<ProductItem, 'id' | 'lastUpdated'>) => void;
-}
-
-const AddProductModal: React.FC<AddProductModalProps> = ({ settings, onClose, onAdd }) => {
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState('Sembako');
-  const [unit, setUnit] = useState('pcs');
-  const [stockQty, setStockQty] = useState('10');
-  const [buyPrice, setBuyPrice] = useState('');
-  const [sellPrice, setSellPrice] = useState('');
-
-  const buyNum = parseInt(buyPrice, 10) || 0;
-  const sellNum = parseInt(sellPrice, 10) || 0;
-  const profitNetto = sellNum - buyNum;
-  const marginPercent = sellNum > 0 ? ((sellNum - buyNum) / sellNum) * 100 : 0;
-  const isProfit = profitNetto >= 0;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || buyNum <= 0 || sellNum <= 0) return;
-    onAdd({
-      name: name.trim(),
-      category,
-      buyPrice: buyNum,
-      currentSellPrice: sellNum,
-      targetMarginPercent: settings.defaultTargetMarginPercent,
-      unit,
-      stockQty: parseInt(stockQty, 10) || 10,
-    });
-    onClose();
-  };
-
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
-  }, []);
-
-  return (
-    <>
-      <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div
-        className="fixed bottom-0 inset-x-0 z-50 max-w-md mx-auto bg-white rounded-t-3xl shadow-2xl"
-        style={{ maxHeight: '92vh', overflowY: 'auto' }}
-      >
-        <div className="flex items-center justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-gray-200" />
-        </div>
-
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1A1A1A' }}>
-              + Tambah Produk Baru
-            </h2>
-            <p style={{ fontSize: 14, color: '#6B7280', marginTop: 2 }}>
-              Isi detail barang baru ke katalog
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5 text-gray-600" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4 pb-32">
-          <div>
-            <label style={{ fontSize: 16, fontWeight: 700, color: '#1A1A1A', display: 'block', marginBottom: 8 }}>
-              Nama Produk
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Contoh: Susu UHT Indomilk 200ml"
-              required
-              style={{ fontSize: 16, height: 60 }}
-              className="w-full px-4 rounded-2xl bg-gray-50 border-2 border-gray-200 text-gray-900 font-medium focus:outline-none focus:border-green-600 transition-colors"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label style={{ fontSize: 16, fontWeight: 700, color: '#1A1A1A', display: 'block', marginBottom: 8 }}>
-                Kategori
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                style={{ fontSize: 15, height: 60 }}
-                className="w-full px-3 rounded-2xl bg-gray-50 border-2 border-gray-200 text-gray-900 focus:outline-none focus:border-green-600 transition-colors cursor-pointer"
-              >
-                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: 16, fontWeight: 700, color: '#1A1A1A', display: 'block', marginBottom: 8 }}>
-                Satuan
-              </label>
-              <select
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                style={{ fontSize: 15, height: 60 }}
-                className="w-full px-3 rounded-2xl bg-gray-50 border-2 border-gray-200 text-gray-900 focus:outline-none focus:border-green-600 transition-colors cursor-pointer"
-              >
-                {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label style={{ fontSize: 16, fontWeight: 700, color: '#1A1A1A', display: 'block', marginBottom: 8 }}>
-              Jumlah Stok
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={stockQty}
-              onChange={(e) => setStockQty(e.target.value)}
-              style={{ fontSize: 18, height: 60, fontWeight: 700 }}
-              className="w-full px-4 rounded-2xl bg-gray-50 border-2 border-gray-200 text-gray-900 tabular-nums focus:outline-none focus:border-green-600 transition-colors"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label style={{ fontSize: 16, fontWeight: 700, color: '#1A1A1A', display: 'block', marginBottom: 8 }}>
-                Harga Modal (Rp)
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={buyPrice}
-                onChange={(e) => setBuyPrice(e.target.value)}
-                placeholder="0"
-                required
-                style={{ fontSize: 18, height: 60, fontWeight: 700 }}
-                className="w-full px-4 rounded-2xl bg-gray-50 border-2 border-gray-200 text-gray-900 tabular-nums focus:outline-none focus:border-green-600 transition-colors"
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: 16, fontWeight: 700, color: '#1A1A1A', display: 'block', marginBottom: 8 }}>
-                Harga Jual (Rp)
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={sellPrice}
-                onChange={(e) => setSellPrice(e.target.value)}
-                placeholder="0"
-                required
-                style={{ fontSize: 18, height: 60, fontWeight: 700, color: '#15803D' }}
-                className="w-full px-4 rounded-2xl bg-green-50 border-2 border-green-200 tabular-nums focus:outline-none focus:border-green-600 transition-colors"
-              />
-            </div>
-          </div>
-
-          {/* Preview kalkulasi */}
-          {buyNum > 0 && sellNum > 0 && (
-            <div
-              className="rounded-2xl p-4 flex items-center justify-between"
-              style={{ backgroundColor: isProfit ? '#F0FDF4' : '#FEF2F2' }}
-            >
-              <span style={{ fontSize: 15, fontWeight: 700, color: '#6B7280' }}>Margin Produk:</span>
-              <span style={{ fontSize: 24, fontWeight: 900, color: isProfit ? '#15803D' : '#DC2626' }}
-                className="tabular-nums">
-                {marginPercent.toFixed(1)}%
-              </span>
-            </div>
-          )}
-        </form>
-
-        <div className="fixed bottom-0 inset-x-0 max-w-md mx-auto px-5 py-4 bg-white border-t border-gray-100" style={{ zIndex: 60 }}>
-          <button
-            onClick={handleSubmit as any}
-            disabled={!name.trim() || buyNum <= 0 || sellNum <= 0}
-            style={{ height: 60, fontSize: 18, fontWeight: 800 }}
-            className="w-full rounded-2xl bg-[#15803D] hover:bg-[#166534] text-white flex items-center justify-center gap-3 transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-          >
-            <CheckCircle2 className="w-5 h-5" />
-            <span>Tambah ke Katalog</span>
-          </button>
-        </div>
-      </div>
-    </>
-  );
-};
-
-
-// MAIN CATALOG VIEW//
 export const CatalogView: React.FC<CatalogViewProps> = ({
   products,
   settings,
   onOpenAlertModal,
   onAddNewProduct,
-  onUpdateProduct,
   onNavigateToScanReceipt,
+  onDeleteProducts,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | MarginStatus>('ALL');
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+  // Form State for Adding Product
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('Sembako');
+  const [buyPrice, setBuyPrice] = useState('');
+  const [currentSellPrice, setCurrentSellPrice] = useState('');
+  const [unit, setUnit] = useState('pcs');
+  const [stockQty, setStockQty] = useState('10');
 
   const metrics = useMemo(() => {
     let dangerCount = 0;
@@ -513,6 +84,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.category.toLowerCase().includes(searchQuery.toLowerCase());
       if (!matchesSearch) return false;
+
       if (statusFilter === 'ALL') return true;
       const calc = calculateMargin(
         p.buyPrice,
@@ -525,21 +97,38 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
     });
   }, [products, searchQuery, statusFilter, settings]);
 
-  const handleSaveProduct = (productId: string, updates: Partial<ProductItem>) => {
-    if (onUpdateProduct) {
-      onUpdateProduct(productId, updates);
+  const handleCreateProduct = (e: React.FormEvent) => {
+    e.preventDefault();
+    const buyNum = parseFloat(buyPrice);
+    const sellNum = parseFloat(currentSellPrice);
+
+    if (name && buyNum > 0 && sellNum > 0 && onAddNewProduct) {
+      onAddNewProduct({
+        name,
+        category,
+        buyPrice: buyNum,
+        currentSellPrice: sellNum,
+        targetMarginPercent: settings.defaultTargetMarginPercent,
+        unit,
+        stockQty: parseInt(stockQty, 10) || 10,
+      });
+
+      setName('');
+      setBuyPrice('');
+      setCurrentSellPrice('');
+      setUnit('pcs');
+      setStockQty('10');
+      setIsAddModalOpen(false);
     }
   };
 
-  const handleAddProduct = (newProduct: Omit<ProductItem, 'id' | 'lastUpdated'>) => {
-    if (onAddNewProduct) {
-      onAddNewProduct(newProduct);
-    }
-  };
+  const parsedBuyPrice = parseInt(buyPrice.replace(/\D/g, ''), 10) || 0;
+  const parsedSellPrice = parseInt(currentSellPrice.replace(/\D/g, ''), 10) || 0;
+  const computedProfit = parsedSellPrice - parsedBuyPrice;
+  const computedMargin = parsedSellPrice > 0 ? (computedProfit / parsedSellPrice) * 100 : 0;
 
   return (
     <div className="pb-24 text-[#1A1A1A] font-sans" style={{ backgroundColor: '#FFFFFF', minHeight: '100%' }}>
-
       {/* ── GREEN APP BAR ── */}
       <div style={{ backgroundColor: '#15803D' }} className="px-4 pt-4 pb-5">
         <div className="flex items-start justify-between">
@@ -551,14 +140,33 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
               {settings.storeName || 'Warung Berkah Jaya'}
             </p>
           </div>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            style={{ height: 48, fontSize: 15, fontWeight: 700, paddingLeft: 16, paddingRight: 18 }}
-            className="flex items-center gap-2 rounded-2xl bg-white text-[#15803D] cursor-pointer active:scale-95 transition-all shadow-md shrink-0 mt-1"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Tambah Produk</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {onDeleteProducts && products.length > 0 && (
+              <button
+                onClick={() => {
+                  setIsDeleteMode(!isDeleteMode);
+                  setSelectedProductIds([]);
+                }}
+                style={{ height: 48, fontSize: 15, fontWeight: 700, paddingLeft: 14, paddingRight: 14 }}
+                className={`flex items-center gap-1.5 rounded-2xl cursor-pointer active:scale-95 transition-all shadow-md shrink-0 mt-1 ${
+                  isDeleteMode
+                    ? 'bg-red-600 text-white'
+                    : 'bg-white/20 text-white hover:bg-white/30'
+                }`}
+              >
+                <Trash2 className="w-5 h-5" />
+                <span>{isDeleteMode ? 'Batal' : 'Hapus'}</span>
+              </button>
+            )}
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              style={{ height: 48, fontSize: 15, fontWeight: 700, paddingLeft: 16, paddingRight: 18 }}
+              className="flex items-center gap-2 rounded-2xl bg-white text-[#15803D] cursor-pointer active:scale-95 transition-all shadow-md shrink-0 mt-1"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Tambah</span>
+            </button>
+          </div>
         </div>
 
         {/* Quick stats strip */}
@@ -582,7 +190,6 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
 
       {/* ── FILTER & SEARCH ── */}
       <div className="px-4 pt-4 pb-2 space-y-3">
-
         {/* Filter Pills */}
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
           {(
@@ -596,12 +203,11 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
             const isActive = statusFilter === f.id;
             const dangerActive = f.id === 'DANGER' && isActive;
             const warningActive = f.id === 'WARNING' && isActive;
-            const healthyActive = (f.id === 'HEALTHY' || f.id === 'ALL') && isActive;
 
             let activeBg = '#15803D';
             let activeText = '#FFFFFF';
             if (dangerActive) { activeBg = '#DC2626'; activeText = '#FFFFFF'; }
-            else if (warningActive) { activeBg = '#f5c007ff'; activeText = '#FFFFFF'; }
+            else if (warningActive) { activeBg = '#F59E0B'; activeText = '#FFFFFF'; }
 
             return (
               <button
@@ -665,8 +271,6 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
 
       {/* ── PRODUCT LIST ── */}
       <div className="px-4 pt-2 space-y-0">
-
-        {/* Empty catalog state */}
         {products.length === 0 ? (
           <div className="mt-6 rounded-3xl bg-white border-2 border-dashed border-gray-200 p-8 text-center space-y-5">
             <div className="w-16 h-16 rounded-2xl bg-green-50 border-2 border-green-100 flex items-center justify-center mx-auto">
@@ -711,14 +315,12 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
           </div>
         ) : (
           <>
-            {/* List header */}
             <div className="flex items-center justify-between py-3">
               <p style={{ fontSize: 15, fontWeight: 600, color: '#6B7280' }}>
                 {filteredProducts.length} barang ditemukan
               </p>
             </div>
 
-            {/* Product list items */}
             {filteredProducts.map((prod, idx) => {
               const calc = calculateMargin(
                 prod.buyPrice,
@@ -728,20 +330,32 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                 settings.dangerThresholdPercent
               );
 
-              const isRugi = calc.activeMarginNominal < 0;
               const isAlternate = idx % 2 === 0;
-
               const statusColor =
-                calc.status === 'DANGER' ? { bg: '#FEF2F2', border: '#FECACA', text: '#DC2626', badgeBg: '#FEE2E2' } :
-                  calc.status === 'WARNING' ? { bg: '#fdfbf2ff', border: '#f5f6beff', text: '#ffd503ff', badgeBg: '#f5efbfff' } :
-                    { bg: '#F0FDF4', border: '#BBF7D0', text: '#15803D', badgeBg: '#DCFCE7' };
+                calc.status === 'DANGER' ? { bg: '#FEF2F2', border: '#FECACA', text: '#DC2626' } :
+                  calc.status === 'WARNING' ? { bg: '#FEF3C7', border: '#FDE68A', text: '#B45309' } :
+                    { bg: '#F0FDF4', border: '#BBF7D0', text: '#15803D' };
+
+              const isSelected = selectedProductIds.includes(prod.id);
+
+              const handleCardClick = () => {
+                if (isDeleteMode) {
+                  if (isSelected) {
+                    setSelectedProductIds((prev) => prev.filter((id) => id !== prod.id));
+                  } else {
+                    setSelectedProductIds((prev) => [...prev, prod.id]);
+                  }
+                } else {
+                  onOpenAlertModal(prod);
+                }
+              };
 
               return (
                 <div
                   key={prod.id}
-                  onClick={() => setSelectedProduct(prod)}
+                  onClick={handleCardClick}
                   style={{
-                    backgroundColor: isAlternate ? '#FFFFFF' : '#FAFAFA',
+                    backgroundColor: isSelected ? '#FEE2E2' : (isAlternate ? '#FFFFFF' : '#FAFAFA'),
                     borderBottom: '1px solid #F3F4F6',
                     paddingTop: 16,
                     paddingBottom: 16,
@@ -751,29 +365,37 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                     minHeight: 90,
                     transition: 'background-color 0.1s',
                   }}
-                  className="active:bg-green-50 select-none"
+                  className="active:bg-green-50 select-none relative"
                 >
                   <div className="flex items-start gap-3">
-                    {/* Status indicator bar */}
-                    <div
-                      style={{
-                        width: 4,
-                        minHeight: 70,
-                        borderRadius: 999,
-                        backgroundColor: statusColor.text,
-                        flexShrink: 0,
-                        marginTop: 2,
-                      }}
-                    />
+                    {isDeleteMode ? (
+                      <div className="flex items-center justify-center shrink-0 mt-3 pl-1">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          readOnly
+                          className="w-5 h-5 accent-red-600 cursor-pointer"
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          width: 4,
+                          minHeight: 70,
+                          borderRadius: 999,
+                          backgroundColor: statusColor.text,
+                          flexShrink: 0,
+                          marginTop: 2,
+                        }}
+                      />
+                    )}
 
                     <div className="flex-1 min-w-0">
-                      {/* Row 1: Product Name */}
                       <h3 style={{ fontSize: 20, fontWeight: 800, color: '#1A1A1A', lineHeight: 1.25 }}
                         className="truncate">
                         {prod.name}
                       </h3>
 
-                      {/* Row 2: Category | Stok */}
                       <p style={{ fontSize: 15, color: '#6B7280', fontWeight: 500, marginTop: 3 }}>
                         {prod.category}
                         <span className="mx-2 text-gray-300">|</span>
@@ -782,7 +404,6 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                         </strong>
                       </p>
 
-                      {/* Row 3: Price + Status Badge */}
                       <div className="flex items-end justify-between mt-3 gap-2">
                         <div>
                           <div style={{ fontSize: 24, fontWeight: 900, color: '#15803D', lineHeight: 1 }}
@@ -795,7 +416,6 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                          {/* Status badge */}
                           <span
                             style={{
                               color: statusColor.text,
@@ -829,23 +449,182 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
         )}
       </div>
 
-      {/* ── MODALS ── */}
-      {isAddModalOpen && (
-        <AddProductModal
-          settings={settings}
-          onClose={() => setIsAddModalOpen(false)}
-          onAdd={handleAddProduct}
-        />
+      {/* Floating Action Bar for Deletion */}
+      {isDeleteMode && onDeleteProducts && (
+        <div className="fixed bottom-24 inset-x-4 max-w-md mx-auto z-40 bg-white border-2 border-[#1A1A1A] rounded-xl p-4 shadow-2xl flex flex-col gap-3">
+          <div className="flex justify-between items-center text-base font-extrabold text-[#1A1A1A] px-1">
+            <span>Terpilih: {selectedProductIds.length} produk</span>
+          </div>
+
+          <button
+            disabled={selectedProductIds.length === 0}
+            onClick={() => setIsConfirmOpen(true)}
+            className="w-full min-h-[60px] rounded-lg bg-red-600 hover:bg-red-700 text-white font-extrabold text-lg flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Trash2 className="w-5 h-5" />
+            <span>Hapus Terpilih ({selectedProductIds.length})</span>
+          </button>
+        </div>
       )}
 
-      {selectedProduct && (
-        <ProductDetailPanel
-          product={selectedProduct}
-          settings={settings}
-          onClose={() => setSelectedProduct(null)}
-          onSave={handleSaveProduct}
-        />
-      )}
+      {/* Custom Confirmation Modal */}
+      <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <DialogContent className="max-w-xs bg-white border-2 border-[#1A1A1A] p-6 rounded-lg text-[#1A1A1A] font-sans text-center [&>button]:hidden">
+          <DialogHeader className="border-b-2 border-gray-200 pb-2">
+            <DialogTitle className="text-lg font-black text-[#1A1A1A] text-center">
+              Konfirmasi Hapus
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-base text-gray-700 font-bold leading-relaxed">
+            {selectedProductIds.length === products.length
+              ? 'Apakah Anda yakin ingin menghapus semua produk?'
+              : `Apakah Anda yakin ingin menghapus ${selectedProductIds.length} produk terpilih?`}
+          </div>
+          <div className="flex gap-2 font-bold text-base">
+            <button
+              onClick={() => setIsConfirmOpen(false)}
+              className="flex-1 h-[52px] rounded-lg bg-white border-2 border-[#1A1A1A] text-[#1A1A1A] cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              onClick={() => {
+                if (onDeleteProducts) {
+                  onDeleteProducts(selectedProductIds);
+                }
+                setIsDeleteMode(false);
+                setSelectedProductIds([]);
+                setIsConfirmOpen(false);
+              }}
+              className="flex-1 h-[52px] rounded-lg bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+            >
+              {selectedProductIds.length === products.length ? 'Hapus Semua' : 'Hapus'}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add New Product Modal */}
+      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+        <DialogContent className="max-w-md bg-white border-2 border-[#1A1A1A] p-6 rounded-lg text-[#1A1A1A] font-sans [&>button]:hidden">
+          <DialogHeader className="border-b-2 border-gray-200 pb-3">
+            <DialogTitle className="text-2xl font-black text-[#1A1A1A]">
+              Tambah Barang Baru
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateProduct} className="space-y-4 mt-3 text-lg">
+            <div>
+              <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Nama Produk</label>
+              <input
+                type="text"
+                placeholder="Contoh: Susu UHT Indomilk 200ml"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full h-[60px] px-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] focus:outline-none focus:border-[#15803D] font-bold"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Kategori</label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full h-[60px] px-3 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] focus:outline-none focus:border-[#15803D] font-bold"
+                >
+                  <option value="Sembako">Sembako</option>
+                  <option value="Makanan Instan">Makanan Instan</option>
+                  <option value="Minuman">Minuman</option>
+                  <option value="Kebutuhan Rumah">Kebutuhan Rumah</option>
+                  <option value="Snack">Snack</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Nama Stok / Satuan</label>
+                <input
+                  type="text"
+                  placeholder="pcs / kg / renceng"
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  className="w-full h-[60px] px-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] focus:outline-none focus:border-[#15803D] font-bold"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Total Stok</label>
+              <input
+                type="number"
+                placeholder="Contoh: 10"
+                value={stockQty}
+                onChange={(e) => setStockQty(e.target.value)}
+                className="w-full h-[60px] px-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] focus:outline-none focus:border-[#15803D] font-bold"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Harga Modal (Rp)</label>
+                <input
+                  type="number"
+                  placeholder="Contoh: 4500"
+                  value={buyPrice}
+                  onChange={(e) => setBuyPrice(e.target.value)}
+                  className="w-full h-[60px] px-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] font-bold focus:outline-none focus:border-[#15803D]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Harga Jual Rak (Rp)</label>
+                <input
+                  type="number"
+                  placeholder="Contoh: 5500"
+                  value={currentSellPrice}
+                  onChange={(e) => setCurrentSellPrice(e.target.value)}
+                  className="w-full h-[60px] px-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#15803D] font-bold focus:outline-none focus:border-[#15803D]"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="bg-gray-100 p-4 rounded-lg border-2 border-gray-300 flex gap-3 text-[#1A1A1A]">
+              <div className="flex-1">
+                <span className="text-xs font-bold text-gray-600 uppercase">Profit Netto</span>
+                <div className="text-xl font-black text-[#1A1A1A] mt-0.5 tabular-nums">
+                  {formatRupiah(computedProfit)}
+                </div>
+              </div>
+              <div className="flex-1">
+                <span className="text-xs font-bold text-gray-600 uppercase">Margin</span>
+                <div className={`text-xl font-black mt-0.5 tabular-nums ${computedMargin >= 15 ? 'text-[#15803D]' : (computedMargin < 5 ? 'text-red-600' : 'text-amber-600')}`}>
+                  {computedMargin.toFixed(1)}%
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="flex-1 min-h-[60px] font-bold text-lg rounded-lg border-2 border-[#1A1A1A] bg-white text-[#1A1A1A] cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                className="flex-1 min-h-[60px] font-bold text-lg rounded-lg bg-[#15803D] hover:bg-[#15803D]/90 text-white cursor-pointer"
+              >
+                Simpan Perubahan
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
