@@ -106,54 +106,55 @@ export const App: React.FC = () => {
   }).length;
 
   // Aksi Menerima Rekomendasi
-  const handleAcceptPrice = (productId: string, newPrice: number) => {
-    let targetName = '';
-    let oldSellPrice = 0;
+  const handleAcceptPrice = (productId: string, newPrice: number, name?: string) => {
+    const prod = products.find((p) => p.id === productId);
+    if (!prod) return;
+
+    const targetName = name !== undefined && name.trim() !== '' ? name.trim() : prod.name;
+    const oldSellPrice = prod.currentSellPrice;
+
+    const oldCalc = calculateMargin(
+      prod.buyPrice,
+      oldSellPrice,
+      prod.targetMarginPercent || settings.defaultTargetMarginPercent,
+      settings.roundingStep,
+      settings.dangerThresholdPercent
+    );
+    const newCalc = calculateMargin(
+      prod.buyPrice,
+      newPrice,
+      prod.targetMarginPercent || settings.defaultTargetMarginPercent,
+      settings.roundingStep,
+      settings.dangerThresholdPercent
+    );
+
+    const newLog: PriceAuditLog = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      productId: prod.id,
+      productName: targetName,
+      oldPrice: oldSellPrice,
+      newPrice,
+      buyPrice: prod.buyPrice,
+      oldMarginPercent: oldCalc.activeMarginPercent,
+      newMarginPercent: newCalc.activeMarginPercent,
+      actionType: 'ACCEPT_RECOMMENDATION',
+      timestamp: new Date().toISOString(),
+      userNote: `Rekomendasi harga baru diterapkan (Target ${prod.targetMarginPercent || settings.defaultTargetMarginPercent}%)`,
+    };
+
+    setAuditLogs((prevLogs) => [newLog, ...prevLogs]);
 
     setProducts((prev) =>
-      prev.map((prod) => {
-        if (prod.id === productId) {
-          targetName = prod.name;
-          oldSellPrice = prod.currentSellPrice;
-
-          const oldCalc = calculateMargin(
-            prod.buyPrice,
-            oldSellPrice,
-            prod.targetMarginPercent || settings.defaultTargetMarginPercent,
-            settings.roundingStep,
-            settings.dangerThresholdPercent
-          );
-          const newCalc = calculateMargin(
-            prod.buyPrice,
-            newPrice,
-            prod.targetMarginPercent || settings.defaultTargetMarginPercent,
-            settings.roundingStep,
-            settings.dangerThresholdPercent
-          );
-
-          const newLog: PriceAuditLog = {
-            id: `log-${Date.now()}`,
-            productId: prod.id,
-            productName: prod.name,
-            oldPrice: oldSellPrice,
-            newPrice,
-            buyPrice: prod.buyPrice,
-            oldMarginPercent: oldCalc.activeMarginPercent,
-            newMarginPercent: newCalc.activeMarginPercent,
-            actionType: 'ACCEPT_RECOMMENDATION',
-            timestamp: new Date().toISOString(),
-            userNote: `Rekomendasi harga baru diterapkan (Target ${prod.targetMarginPercent || settings.defaultTargetMarginPercent}%)`,
-          };
-
-          setAuditLogs((prevLogs) => [newLog, ...prevLogs]);
-
+      prev.map((p) => {
+        if (p.id === productId) {
           return {
-            ...prod,
+            ...p,
+            name: targetName,
             currentSellPrice: newPrice,
             lastUpdated: new Date().toISOString(),
           };
         }
-        return prod;
+        return p;
       })
     );
 
@@ -165,54 +166,68 @@ export const App: React.FC = () => {
   };
 
   // Aksi Penyesuaian Manual
-  const handleOverridePrice = (productId: string, overridePrice: number, userNote?: string) => {
-    let targetName = '';
-    let oldSellPrice = 0;
+  const handleOverridePrice = (
+    productId: string,
+    overridePrice: number,
+    category?: string,
+    stock?: number,
+    name?: string,
+    userNote?: string,
+    unit?: string,
+    buyPrice?: number
+  ) => {
+    const prod = products.find((p) => p.id === productId);
+    if (!prod) return;
+
+    const targetName = name !== undefined && name.trim() !== '' ? name.trim() : prod.name;
+    const oldSellPrice = prod.currentSellPrice;
+
+    const oldCalc = calculateMargin(
+      prod.buyPrice,
+      oldSellPrice,
+      prod.targetMarginPercent || settings.defaultTargetMarginPercent,
+      settings.roundingStep,
+      settings.dangerThresholdPercent
+    );
+    const newCalc = calculateMargin(
+      buyPrice !== undefined ? buyPrice : prod.buyPrice,
+      overridePrice,
+      prod.targetMarginPercent || settings.defaultTargetMarginPercent,
+      settings.roundingStep,
+      settings.dangerThresholdPercent
+    );
+
+    const newLog: PriceAuditLog = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      productId: prod.id,
+      productName: targetName,
+      oldPrice: oldSellPrice,
+      newPrice: overridePrice,
+      buyPrice: buyPrice !== undefined ? buyPrice : prod.buyPrice,
+      oldMarginPercent: oldCalc.activeMarginPercent,
+      newMarginPercent: newCalc.activeMarginPercent,
+      actionType: 'MANUAL_OVERRIDE',
+      timestamp: new Date().toISOString(),
+      userNote: userNote || 'Penyesuaian manual pemilik warung',
+    };
+
+    setAuditLogs((prevLogs) => [newLog, ...prevLogs]);
 
     setProducts((prev) =>
-      prev.map((prod) => {
-        if (prod.id === productId) {
-          targetName = prod.name;
-          oldSellPrice = prod.currentSellPrice;
-
-          const oldCalc = calculateMargin(
-            prod.buyPrice,
-            oldSellPrice,
-            prod.targetMarginPercent || settings.defaultTargetMarginPercent,
-            settings.roundingStep,
-            settings.dangerThresholdPercent
-          );
-          const newCalc = calculateMargin(
-            prod.buyPrice,
-            overridePrice,
-            prod.targetMarginPercent || settings.defaultTargetMarginPercent,
-            settings.roundingStep,
-            settings.dangerThresholdPercent
-          );
-
-          const newLog: PriceAuditLog = {
-            id: `log-${Date.now()}`,
-            productId: prod.id,
-            productName: prod.name,
-            oldPrice: oldSellPrice,
-            newPrice: overridePrice,
-            buyPrice: prod.buyPrice,
-            oldMarginPercent: oldCalc.activeMarginPercent,
-            newMarginPercent: newCalc.activeMarginPercent,
-            actionType: 'MANUAL_OVERRIDE',
-            timestamp: new Date().toISOString(),
-            userNote: userNote || 'Penyesuaian manual pemilik warung',
-          };
-
-          setAuditLogs((prevLogs) => [newLog, ...prevLogs]);
-
+      prev.map((p) => {
+        if (p.id === productId) {
           return {
-            ...prod,
+            ...p,
+            name: targetName,
             currentSellPrice: overridePrice,
+            category: category !== undefined ? category : p.category,
+            stockQty: stock !== undefined ? stock : p.stockQty,
+            unit: unit !== undefined ? unit : p.unit,
+            buyPrice: buyPrice !== undefined ? buyPrice : p.buyPrice,
             lastUpdated: new Date().toISOString(),
           };
         }
-        return prod;
+        return p;
       })
     );
 
@@ -310,6 +325,16 @@ export const App: React.FC = () => {
     });
   };
 
+  // Hapus produk dari katalog
+  const handleDeleteProducts = (productIds: string[]) => {
+    setProducts((prev) => prev.filter((p) => !productIds.includes(p.id)));
+  };
+
+  // Hapus log riwayat
+  const handleDeleteLogs = (logIds: string[]) => {
+    setAuditLogs((prev) => prev.filter((log) => !logIds.includes(log.id)));
+  };
+
   return (
     <MobileShell>
       {/* Global Unified Header */}
@@ -345,10 +370,16 @@ export const App: React.FC = () => {
             settings={settings}
             onOpenAlertModal={(prod) => setAlertProduct(prod)}
             onAddNewProduct={handleAddNewProduct}
+            onDeleteProducts={handleDeleteProducts}
           />
         )}
 
-        {activeTab === 'HISTORY' && <AuditHistoryView logs={auditLogs} />}
+        {activeTab === 'HISTORY' && (
+          <AuditHistoryView
+            logs={auditLogs}
+            onDeleteLogs={handleDeleteLogs}
+          />
+        )}
 
         {activeTab === 'SETTINGS' && (
           <SettingsView
