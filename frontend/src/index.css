@@ -33,7 +33,7 @@
     --input: 150 14% 96%;            /* #F4F6F5 */
     --ring: 151 57% 25%;
 
-    --radius: 1rem;                  /* 16px default corner radius */
+    --radius: 0.75rem;              /* 12px clean corner radius */
   }
 }
 
@@ -46,14 +46,14 @@
     color: #1A1D1E;
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
-    letter-spacing: -0.015em;
+    letter-spacing: -0.01em;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
     overflow-x: hidden;
   }
 
   h1, h2, h3, h4 {
-    letter-spacing: -0.025em;
+    letter-spacing: -0.02em;
     font-weight: 700;
     color: #1A1D1E;
   }
@@ -66,11 +66,11 @@
 
 /* Easy Mode Text Magnifier */
 .easy-mode {
-  font-size: 112%;
+  font-size: 104%;
 }
 
 .easy-mode button {
-  min-height: 56px !important;
+  min-height: 48px !important;
 }
 
 /* Custom Clean Scrollbar */

@@ -28,7 +28,7 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ logs, onDele
   const [selectedLogIds, setSelectedLogIds] = useState<string[]>([]);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-  // Deduplicate logs using unique key (productId + newPrice + timestamp or id)
+  // Deduplicate logs using unique key
   const uniqueLogs = useMemo(() => {
     const seenKeys = new Set<string>();
     const result: PriceAuditLog[] = [];
@@ -68,14 +68,14 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ logs, onDele
   };
 
   return (
-    <div className="space-y-6 pb-28 text-[#1A1A1A] font-sans bg-white min-h-screen">
+    <div className="space-y-4 pb-24 text-[#1A1D1E] font-sans">
       {/* 1. Header Area */}
-      <div className="-mx-4 -mt-4 mb-6 bg-[#15803D] p-5 text-white flex items-center justify-between shadow-md">
+      <div className="bg-[#15803D] rounded-2xl p-4 text-white flex items-center justify-between shadow-sm">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-white leading-none">
-            Riwayat
+          <h1 className="text-lg font-bold tracking-tight text-white leading-none">
+            Riwayat Penyesuaian
           </h1>
-          <p className="text-lg font-medium text-white/90 mt-1">
+          <p className="text-xs font-medium text-white/90 mt-1">
             Log transparansi seluruh perubahan harga di rak warung
           </p>
         </div>
@@ -87,13 +87,13 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ logs, onDele
                 setIsDeleteMode(!isDeleteMode);
                 setSelectedLogIds([]);
               }}
-              className={`min-h-[52px] px-4 rounded-lg font-extrabold text-base flex items-center gap-2 transition-colors cursor-pointer border-2 shadow ${
+              className={`h-10 px-3.5 rounded-full font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border shadow-xs ${
                 isDeleteMode
-                  ? 'bg-red-600 border-white text-white'
+                  ? 'bg-red-600 border-red-600 text-white'
                   : 'bg-white text-[#15803D] hover:bg-white/95 border-white'
               }`}
             >
-              <Trash2 className="w-5 h-5 stroke-[2.5]" />
+              <Trash2 className="w-4 h-4" />
               <span>{isDeleteMode ? 'Batal Hapus' : 'Hapus Log'}</span>
             </button>
           )}
@@ -102,27 +102,27 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ logs, onDele
 
       {/* 2. Filter Row (Search & Date Picker) */}
       {logs.length > 0 && (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             {/* Search Input */}
             <div className="relative flex-1">
-              <Search className="w-6 h-6 text-[#1A1A1A] absolute left-4 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Cari nama barang..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-[60px] pl-12 pr-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] placeholder:text-gray-500 focus:outline-none focus:border-[#15803D] font-bold"
+                className="w-full h-10 pl-9 pr-3 rounded-xl bg-white border border-[#E5E7EB] text-xs text-[#1A1D1E] placeholder:text-gray-400 focus:outline-none focus:border-[#15803D] font-medium"
               />
             </div>
 
             {/* Date Input */}
-            <div className="relative w-1/3 min-w-[140px]">
+            <div className="relative w-1/3 min-w-[120px]">
               <input
                 type="date"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
-                className="w-full h-[60px] px-3 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] focus:outline-none focus:border-[#15803D] font-bold dark:[color-scheme:light]"
+                className="w-full h-10 px-2 rounded-xl bg-white border border-[#E5E7EB] text-xs text-[#1A1D1E] focus:outline-none focus:border-[#15803D] font-medium dark:[color-scheme:light]"
               />
             </div>
           </div>
@@ -133,7 +133,7 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ logs, onDele
                 setSearchQuery('');
                 setDateFilter('');
               }}
-              className="w-full h-[40px] text-center bg-gray-100 border border-[#1A1A1A] text-sm font-bold text-[#1A1A1A] rounded hover:bg-gray-200 transition-colors"
+              className="w-full h-8 text-center bg-gray-100 border border-[#E5E7EB] text-xs font-semibold text-[#1A1D1E] rounded-lg hover:bg-gray-200 transition-colors"
             >
               Reset Filter
             </button>
@@ -143,40 +143,39 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ logs, onDele
 
       {/* Selection Utility Row */}
       {isDeleteMode && filteredLogs.length > 0 && (
-        <div className="flex justify-between items-center px-1 py-1 text-base text-gray-700">
+        <div className="flex justify-between items-center px-1 py-1 text-xs text-gray-600">
           <button
             onClick={handleToggleSelectAll}
-            className="flex items-center gap-2 hover:text-black transition-colors cursor-pointer font-extrabold"
+            className="flex items-center gap-1.5 hover:text-black transition-colors cursor-pointer font-bold"
           >
             <input
               type="checkbox"
               checked={selectedLogIds.length === filteredLogs.length && filteredLogs.length > 0}
               readOnly
-              className="w-6 h-6 cursor-pointer accent-red-600"
+              className="w-4 h-4 cursor-pointer accent-red-600"
             />
             <span>{selectedLogIds.length === filteredLogs.length ? 'Batal Pilih Semua' : 'Pilih Semua'}</span>
           </button>
-          <span className="font-extrabold">
+          <span className="font-bold">
             {selectedLogIds.length} dari {filteredLogs.length} terpilih
           </span>
         </div>
       )}
 
-      {/* 3. Logs List Area (Alternating white/subtle gray) */}
-      <div className="flex flex-col border border-gray-200 rounded-lg overflow-hidden">
+      {/* 3. Logs List Area */}
+      <div className="flex flex-col space-y-2">
         {filteredLogs.length === 0 ? (
-          <div className="p-12 text-center text-gray-500 bg-[#F9F9F9]">
-            <History className="w-10 h-10 mx-auto mb-2 text-gray-400" />
-            <p className="text-lg font-bold">
+          <div className="p-8 text-center rounded-2xl bg-white border border-[#E5E7EB] text-gray-500">
+            <History className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+            <p className="text-xs font-bold text-[#1A1D1E]">
               {logs.length === 0 ? 'Belum ada riwayat penyesuaian harga' : 'Riwayat tidak ditemukan'}
             </p>
           </div>
         ) : (
-          filteredLogs.map((log, index) => {
+          filteredLogs.map((log) => {
             const marginGained = log.newPrice - log.oldPrice;
             const isProfitGain = marginGained > 0;
             const isSelected = selectedLogIds.includes(log.id);
-            const isEven = index % 2 === 0;
 
             const handleItemClick = () => {
               if (isDeleteMode) {
@@ -192,30 +191,28 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ logs, onDele
               <div
                 key={log.id}
                 onClick={handleItemClick}
-                className={`p-5 flex flex-col gap-3 relative transition-colors cursor-pointer select-none border-b border-gray-200 ${
-                  isEven ? 'bg-[#F9F9F9]' : 'bg-[#FFFFFF]'
-                } ${
-                  isSelected ? 'bg-red-50 border-l-4 border-l-red-600' : 'border-l-4 border-l-transparent'
+                className={`p-3.5 rounded-xl bg-white border border-[#E5E7EB] flex flex-col gap-2 relative transition-all cursor-pointer select-none shadow-xs hover:border-[#15803D] ${
+                  isSelected ? 'bg-red-50/50 border-red-500' : ''
                 }`}
               >
                 {isDeleteMode && (
-                  <div className="absolute right-4 top-4">
+                  <div className="absolute right-3 top-3">
                     <input
                       type="checkbox"
                       checked={isSelected}
                       readOnly
-                      className="w-6 h-6 accent-red-600 cursor-pointer"
+                      className="w-4 h-4 accent-red-600 cursor-pointer"
                     />
                   </div>
                 )}
 
                 {/* Row 1: Product Title & Date */}
-                <div className="flex items-start justify-between gap-3 pr-8">
+                <div className="flex items-start justify-between gap-2 pr-6">
                   <div>
-                    <h3 className="text-[20px] font-black text-[#1A1A1A] leading-tight">
+                    <h3 className="text-sm font-bold text-[#1A1D1E] leading-snug">
                       {log.productName}
                     </h3>
-                    <div className="text-[14px] text-gray-600 font-bold mt-1 tabular-nums">
+                    <div className="text-xs text-gray-500 font-medium mt-0.5 tabular-nums">
                       {new Date(log.timestamp).toLocaleDateString('id-ID', {
                         day: 'numeric',
                         month: 'short',
@@ -228,12 +225,12 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ logs, onDele
 
                   {/* Profit gain/change pill */}
                   <span
-                    className={`text-[15px] font-black tabular-nums px-3 py-1.5 rounded-md border-2 inline-flex items-center shrink-0 ${
+                    className={`text-xs font-bold tabular-nums px-2 py-0.5 rounded-full border inline-flex items-center shrink-0 ${
                       isProfitGain
-                        ? 'bg-emerald-50 text-[#15803D] border-[#15803D]'
+                        ? 'bg-emerald-50 text-[#15803D] border-emerald-200'
                         : marginGained < 0
-                        ? 'bg-red-50 text-red-600 border-red-600'
-                        : 'bg-gray-100 text-gray-700 border-gray-400'
+                        ? 'bg-red-50 text-red-600 border-red-200'
+                        : 'bg-gray-50 text-gray-600 border-gray-200'
                     }`}
                   >
                     {isProfitGain ? `+${formatRupiah(marginGained)}` : formatRupiah(marginGained)}
@@ -241,26 +238,26 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ logs, onDele
                 </div>
 
                 {/* Row 2: Old Price -> New Price & Action Badge */}
-                <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-                  <div className="flex items-center gap-2 tabular-nums">
-                    <span className="text-[16px] font-bold text-gray-400 line-through">
+                <div className="flex items-center justify-between pt-2 border-t border-[#F0F2F5] text-xs">
+                  <div className="flex items-center gap-1.5 tabular-nums">
+                    <span className="text-gray-400 line-through">
                       {formatRupiah(log.oldPrice)}
                     </span>
-                    <ArrowRight className="w-4 h-4 text-gray-500 stroke-[2.5]" />
-                    <span className="text-[22px] font-black text-[#15803D]">
+                    <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="font-extrabold text-[#15803D]">
                       {formatRupiah(log.newPrice)}
                     </span>
                   </div>
 
                   <div className="text-right">
                     {log.actionType === 'ACCEPT_RECOMMENDATION' ? (
-                      <span className="px-3 py-1 rounded-md bg-emerald-100 text-[#15803D] border border-[#15803D] text-[13px] font-black inline-flex items-center gap-1">
-                        <CheckCircle2 className="w-4 h-4 text-[#15803D]" />
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-[#15803D] border border-emerald-200 text-[11px] font-bold inline-flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-[#15803D]" />
                         <span>Rekomendasi</span>
                       </span>
                     ) : (
-                      <span className="px-3 py-1 rounded-md bg-amber-100 text-amber-800 border border-amber-600 text-[13px] font-black inline-flex items-center gap-1">
-                        <SlidersHorizontal className="w-4 h-4 text-amber-800" />
+                      <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold inline-flex items-center gap-1">
+                        <SlidersHorizontal className="w-3 h-3 text-amber-700" />
                         <span>Manual</span>
                       </span>
                     )}
@@ -274,17 +271,17 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ logs, onDele
 
       {/* Floating Action Bar for Deletion */}
       {isDeleteMode && onDeleteLogs && (
-        <div className="fixed bottom-24 inset-x-4 max-w-md mx-auto z-40 bg-white border-2 border-[#1A1A1A] rounded-xl p-4 shadow-2xl flex flex-col gap-3">
-          <div className="flex justify-between items-center text-base font-extrabold text-[#1A1A1A] px-1">
+        <div className="fixed bottom-20 inset-x-4 max-w-md mx-auto z-40 bg-white border border-[#E5E7EB] rounded-2xl p-3 shadow-xl flex flex-col gap-2">
+          <div className="flex justify-between items-center text-xs font-bold text-[#1A1D1E] px-1">
             <span>Terpilih: {selectedLogIds.length} item</span>
           </div>
 
           <button
             disabled={selectedLogIds.length === 0}
             onClick={() => setIsConfirmOpen(true)}
-            className="w-full min-h-[60px] rounded-lg bg-red-600 hover:bg-red-700 text-white font-extrabold text-lg flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
-            <Trash2 className="w-5 h-5" />
+            <Trash2 className="w-4 h-4" />
             <span>Hapus Terpilih ({selectedLogIds.length})</span>
           </button>
         </div>
@@ -292,21 +289,21 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ logs, onDele
 
       {/* Custom Confirmation Modal */}
       <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <DialogContent className="max-w-xs bg-white border-2 border-[#1A1A1A] p-6 rounded-lg text-[#1A1A1A] font-sans text-center [&>button]:hidden">
-          <DialogHeader className="border-b-2 border-gray-200 pb-2">
-            <DialogTitle className="text-lg font-black text-[#1A1A1A] text-center">
+        <DialogContent className="max-w-xs bg-white border border-[#E5E7EB] p-5 rounded-2xl text-[#1A1D1E] font-sans text-center [&>button]:hidden shadow-xl">
+          <DialogHeader className="border-b border-[#F0F2F5] pb-2">
+            <DialogTitle className="text-sm font-bold text-[#1A1D1E] text-center">
               Konfirmasi Hapus
             </DialogTitle>
           </DialogHeader>
-          <div className="py-4 text-base text-gray-700 font-bold leading-relaxed">
+          <div className="py-3 text-xs text-gray-600 font-medium leading-relaxed">
             {selectedLogIds.length === logs.length
               ? 'Apakah Anda yakin ingin menghapus semua riwayat?'
               : `Apakah Anda yakin ingin menghapus ${selectedLogIds.length} riwayat terpilih?`}
           </div>
-          <div className="flex gap-2 font-bold text-base">
+          <div className="flex gap-2 font-bold text-xs">
             <button
               onClick={() => setIsConfirmOpen(false)}
-              className="flex-1 h-[52px] rounded-lg bg-white border-2 border-[#1A1A1A] text-[#1A1A1A] cursor-pointer"
+              className="flex-1 h-10 rounded-xl bg-white border border-[#E5E7EB] text-[#1A1D1E] cursor-pointer hover:bg-gray-50"
             >
               Batal
             </button>
@@ -319,7 +316,7 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ logs, onDele
                 setSelectedLogIds([]);
                 setIsConfirmOpen(false);
               }}
-              className="flex-1 h-[52px] rounded-lg bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+              className="flex-1 h-10 rounded-xl bg-red-600 hover:bg-red-700 text-white cursor-pointer"
             >
               {selectedLogIds.length === logs.length ? 'Hapus Semua' : 'Hapus'}
             </button>
@@ -329,4 +326,3 @@ export const AuditHistoryView: React.FC<AuditHistoryViewProps> = ({ logs, onDele
     </div>
   );
 };
-

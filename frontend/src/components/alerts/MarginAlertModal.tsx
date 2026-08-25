@@ -91,34 +91,34 @@ export const MarginAlertModal: React.FC<MarginAlertModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md bg-white border-2 border-[#1A1A1A] p-6 rounded-lg text-[#1A1A1A] font-sans [&>button]:hidden">
-        <DialogHeader className="border-b-2 border-gray-200 pb-3">
-          <DialogTitle className="text-2xl font-black text-[#1A1A1A]">
+      <DialogContent className="max-w-md bg-white border border-[#E5E7EB] p-5 rounded-2xl text-[#1A1D1E] font-sans [&>button]:hidden shadow-xl">
+        <DialogHeader className="border-b border-[#F0F2F5] pb-2">
+          <DialogTitle className="text-base font-bold text-[#1A1D1E]">
             Detail & Edit Barang
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleCustomSubmit} className="space-y-4 mt-3 text-lg">
+        <form onSubmit={handleCustomSubmit} className="space-y-3 mt-2 text-xs">
           {/* Field 1: Nama Produk */}
           <div>
-            <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Nama Produk</label>
+            <label className="text-[#1A1D1E] font-bold block mb-1 text-xs">Nama Produk</label>
             <input
               type="text"
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
-              className="w-full h-[60px] px-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] focus:outline-none focus:border-[#15803D] font-bold"
+              className="w-full h-10 px-3 rounded-xl bg-white border border-[#E5E7EB] text-xs text-[#1A1D1E] focus:outline-none focus:border-[#15803D] font-medium"
               required
             />
           </div>
 
           {/* Field 2 & 4: Kategori Dropdown & Nama Stok/Satuan */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Kategori</label>
+              <label className="text-[#1A1D1E] font-bold block mb-1 text-xs">Kategori</label>
               <select
                 value={categoryInput}
                 onChange={(e) => setCategoryInput(e.target.value)}
-                className="w-full h-[60px] px-3 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] focus:outline-none focus:border-[#15803D] font-bold"
+                className="w-full h-10 px-2 rounded-xl bg-white border border-[#E5E7EB] text-xs text-[#1A1D1E] focus:outline-none focus:border-[#15803D] font-medium"
               >
                 <option value="Sembako">Sembako</option>
                 <option value="Makanan Instan">Makanan Instan</option>
@@ -129,12 +129,12 @@ export const MarginAlertModal: React.FC<MarginAlertModalProps> = ({
             </div>
 
             <div>
-              <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Nama Stok / Satuan</label>
+              <label className="text-[#1A1D1E] font-bold block mb-1 text-xs">Satuan</label>
               <input
                 type="text"
                 value={unitInput}
                 onChange={(e) => setUnitInput(e.target.value)}
-                className="w-full h-[60px] px-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] focus:outline-none focus:border-[#15803D] font-bold"
+                className="w-full h-10 px-3 rounded-xl bg-white border border-[#E5E7EB] text-xs text-[#1A1D1E] focus:outline-none focus:border-[#15803D] font-medium"
                 required
               />
             </div>
@@ -142,69 +142,69 @@ export const MarginAlertModal: React.FC<MarginAlertModalProps> = ({
 
           {/* Field 3: Total Stok */}
           <div>
-            <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Total Stok</label>
+            <label className="text-[#1A1D1E] font-bold block mb-1 text-xs">Total Stok</label>
             <input
               type="number"
               value={stockInput}
               onChange={(e) => setStockInput(e.target.value)}
-              className="w-full h-[60px] px-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] focus:outline-none focus:border-[#15803D] font-bold"
+              className="w-full h-10 px-3 rounded-xl bg-white border border-[#E5E7EB] text-xs text-[#1A1D1E] focus:outline-none focus:border-[#15803D] font-medium"
               required
             />
           </div>
 
           {/* Field 5 & 6: Harga Modal & Harga Jual */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Harga Modal (Rp)</label>
+              <label className="text-[#1A1D1E] font-bold block mb-1 text-xs">Harga Modal (Rp)</label>
               <input
                 type="number"
                 value={buyPriceInput}
                 onChange={(e) => setBuyPriceInput(e.target.value)}
-                className="w-full h-[60px] px-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#1A1A1A] focus:outline-none focus:border-[#15803D] font-bold"
+                className="w-full h-10 px-3 rounded-xl bg-white border border-[#E5E7EB] text-xs text-[#1A1D1E] font-medium focus:outline-none focus:border-[#15803D]"
                 required
               />
             </div>
 
             <div>
-              <label className="text-[#1A1A1A] font-extrabold block mb-1 text-base">Harga Jual Rak (Rp)</label>
+              <label className="text-[#1A1D1E] font-bold block mb-1 text-xs">Harga Jual Rak (Rp)</label>
               <input
                 type="number"
                 value={customPriceInput}
                 onChange={(e) => setCustomPriceInput(e.target.value)}
-                className="w-full h-[60px] px-4 rounded-lg bg-white border-2 border-[#1A1A1A] text-lg text-[#15803D] focus:outline-none focus:border-[#15803D] font-bold"
+                className="w-full h-10 px-3 rounded-xl bg-white border border-[#E5E7EB] text-xs text-[#15803D] font-bold focus:outline-none focus:border-[#15803D]"
                 required
               />
             </div>
           </div>
 
-          {/* Calculated Data: Profit Netto & Margin in massive bold boxes */}
-          <div className="bg-gray-100 p-4 rounded-lg border-2 border-gray-300 flex gap-3 text-[#1A1A1A]">
+          {/* Calculated Data: Profit Netto & Margin */}
+          <div className="bg-[#F8F9FA] p-3 rounded-xl border border-[#E5E7EB] flex gap-3 text-[#1A1D1E]">
             <div className="flex-1">
-              <span className="text-xs font-bold text-gray-600 uppercase">Profit Netto</span>
-              <div className="text-xl font-black text-[#1A1A1A] mt-0.5 tabular-nums">
+              <span className="text-[10px] font-bold text-gray-500 uppercase">Profit Netto</span>
+              <div className="text-sm font-extrabold text-[#1A1D1E] mt-0.5 tabular-nums">
                 {formatRupiah(computedProfit)}
               </div>
             </div>
             <div className="flex-1">
-              <span className="text-xs font-bold text-gray-600 uppercase">Margin</span>
-              <div className={`text-xl font-black mt-0.5 tabular-nums ${computedMargin >= 15 ? 'text-[#15803D]' : (computedMargin < 5 ? 'text-red-600' : 'text-amber-600')}`}>
+              <span className="text-[10px] font-bold text-gray-500 uppercase">Margin</span>
+              <div className={`text-sm font-extrabold mt-0.5 tabular-nums ${computedMargin >= 15 ? 'text-[#15803D]' : (computedMargin < 5 ? 'text-red-600' : 'text-amber-600')}`}>
                 {computedMargin.toFixed(1)}%
               </div>
             </div>
           </div>
 
           {/* Action buttons */}
-          <div className="pt-2 flex gap-2">
+          <div className="pt-1 flex gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 min-h-[60px] font-bold text-lg rounded-lg border-2 border-[#1A1A1A] bg-white text-[#1A1A1A] cursor-pointer"
+              className="flex-1 h-11 font-bold text-xs rounded-xl border border-[#E5E7EB] bg-white text-[#1A1D1E] hover:bg-gray-50 cursor-pointer"
             >
               Batal
             </button>
             <button
               type="submit"
-              className="flex-1 min-h-[60px] font-bold text-lg rounded-lg bg-[#15803D] hover:bg-[#15803D]/90 text-white cursor-pointer"
+              className="flex-1 h-11 font-bold text-xs rounded-xl bg-[#15803D] hover:bg-[#15803D]/90 text-white cursor-pointer shadow-sm"
             >
               Simpan Perubahan
             </button>

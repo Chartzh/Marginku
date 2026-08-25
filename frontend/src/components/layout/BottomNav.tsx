@@ -50,8 +50,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   ];
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E5E7EB] pb-safe h-[80px] flex items-center shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
-      <div className="w-full max-w-md mx-auto grid grid-cols-5 items-center px-2 py-1">
+    <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E5E7EB] pb-safe h-[64px] flex items-center shadow-[0_-2px_12px_rgba(0,0,0,0.05)]">
+      <div className="w-full max-w-md mx-auto grid grid-cols-5 items-center px-1.5 py-0.5">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const Icon = tab.icon;
@@ -61,29 +61,27 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
               aria-label={`Buka halaman ${tab.label}`}
-              className={`h-[64px] flex flex-col items-center justify-center py-1 px-1 rounded-2xl transition-all select-none cursor-pointer active:scale-95 ${
+              className={`h-[52px] flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-all select-none cursor-pointer active:scale-95 ${
                 isActive
-                  ? 'bg-[#EBF5F0] text-[#15803D] font-bold shadow-sm'
-                  : 'text-[#8C939D] hover:text-[#1A1D1E] hover:bg-[#F4F6F5]'
+                  ? 'bg-[#EBF5F0] text-[#15803D] font-bold'
+                  : 'text-[#6B7280] hover:text-[#1A1D1E] hover:bg-[#F8F9FA]'
               }`}
             >
               <div className="relative flex items-center justify-center">
                 <Icon
-                  className={`transition-transform ${
-                    isActive ? 'stroke-[2.5] text-[#15803D] scale-105' : 'stroke-[1.8] text-[#8C939D]'
+                  className={`w-5 h-5 transition-transform ${
+                    isActive ? 'stroke-[2.5] text-[#15803D] scale-105' : 'stroke-[1.8] text-[#6B7280]'
                   }`}
-                  style={{ width: 24, height: 24 }}
                 />
                 {tab.badge && (
-                  <span className="absolute -top-2 -right-3 bg-[#EF4444] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center ring-2 ring-white tabular-nums shadow-sm">
+                  <span className="absolute -top-1.5 -right-2 bg-[#EF4444] text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center ring-2 ring-white tabular-nums shadow-xs">
                     {tab.badge}
                   </span>
                 )}
               </div>
               <span
-                style={{ fontSize: 13, marginTop: 4, lineHeight: 1 }}
-                className={`tracking-tight font-semibold ${
-                  isActive ? 'text-[#15803D] font-extrabold' : 'text-[#8C939D]'
+                className={`text-[11px] leading-none mt-1 tracking-tight ${
+                  isActive ? 'text-[#15803D] font-extrabold' : 'text-[#6B7280] font-medium'
                 }`}
               >
                 {tab.label}
