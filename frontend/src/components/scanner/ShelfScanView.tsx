@@ -5,7 +5,6 @@ import { formatRupiah } from '@/lib/utils';
 import {
   Image as ImageIcon,
   AlertOctagon,
-  ArrowRight,
   Flashlight,
   Scan,
   Sparkles,
@@ -28,6 +27,7 @@ interface ShelfScanViewProps {
   scanResult: ShelfScanState | null;
   onScanResultChange: (result: ShelfScanState | null) => void;
   onOpenAlertModal: (product: ProductItem) => void;
+  onAcceptPrice?: (productId: string, newPrice: number, name?: string) => void;
 }
 
 const AI_AUDIT_STAGES = [
@@ -43,6 +43,7 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
   scanResult,
   onScanResultChange,
   onOpenAlertModal,
+  onAcceptPrice,
 }) => {
   const [flashlightOn, setFlashlightOn] = useState(false);
   const [activePresetId, setActivePresetId] = useState<string>('');
@@ -81,7 +82,10 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
             detectedPrice: match.currentSellPrice,
             confidence: 1,
           },
-          matchedProduct: match,
+          matchedProduct: {
+            ...match,
+            recommendedSellPrice: calc.smartRoundedSellPrice,
+          },
           analysis: calc,
         });
       }
@@ -264,6 +268,13 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
       const updatedMatch: ProductItem = {
         ...bestMatch,
         currentSellPrice: preset.detectedPrice,
+        recommendedSellPrice: calculateMargin(
+          bestMatch.buyPrice,
+          preset.detectedPrice,
+          bestMatch.targetMarginPercent || settings.defaultTargetMarginPercent,
+          settings.roundingStep,
+          settings.dangerThresholdPercent
+        ).smartRoundedSellPrice,
       };
 
       const analysis = calculateMargin(
@@ -624,6 +635,7 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
             : an.status === 'WARNING'
             ? 'text-amber-600'
             : 'text-[#15803D]';
+          const recommendedPrice = mp.recommendedSellPrice ?? an.smartRoundedSellPrice;
 
         return (
           <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4 space-y-3 shadow-sm">
@@ -679,22 +691,35 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
               </div>
             </div>
 
-            {/* Action CTA Button */}
-            <button
-              onClick={() => {
-                if (scanResult.matchedProduct) onOpenAlertModal(scanResult.matchedProduct);
-              }}
-              className="w-full h-11 px-4 rounded-xl bg-[#15803D] hover:bg-[#15803D]/90 text-white font-bold text-xs flex items-center justify-between transition-colors cursor-pointer shadow-sm"
-            >
-              <span>
-                {an.status === 'DANGER'
-                  ? `Amankan margin (ubah ke ${formatRupiah(an.smartRoundedSellPrice)})`
-                  : `Amankan margin etalase (${formatRupiah(an.smartRoundedSellPrice)})`}
-              </span>
-              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
-                <ArrowRight className="w-3.5 h-3.5 text-white" />
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-[#15803D]">Rekomendasi AI</span>
+                  <div className="text-sm font-extrabold text-[#15803D] tabular-nums">
+                    {formatRupiah(recommendedPrice)}
+                  </div>
+                </div>
+                <span className="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-[#15803D] border border-emerald-200">
+                  Margin {an.recommendedMarginPercent.toFixed(1)}%
+                </span>
               </div>
-            </button>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => onAcceptPrice?.(mp.id, recommendedPrice, mp.name)}
+                  className="flex-1 h-9 rounded-lg bg-[#15803D] text-white text-[11px] font-bold hover:bg-[#15803D]/90"
+                >
+                  Terapkan harga
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onOpenAlertModal({ ...mp, recommendedSellPrice: recommendedPrice })}
+                  className="flex-1 h-9 rounded-lg border border-[#15803D] text-[#15803D] text-[11px] font-bold hover:bg-white"
+                >
+                  Ketik pilihan sendiri
+                </button>
+              </div>
+            </div>
           </div>
         );
       })()}
