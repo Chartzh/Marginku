@@ -2,11 +2,11 @@
 FROM oven/bun:1 AS builder
 WORKDIR /app
 
-COPY package.json bun.lock* ./
-RUN bun install --frozen-lockfile || bun install
+COPY package.json bun.lock* package-lock.json* ./
+RUN bun install || npm install
 
 COPY . .
-RUN bun run build
+RUN bun run build || npm run build
 
 # Stage 2: Serve via Nginx
 FROM nginx:alpine
