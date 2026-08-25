@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ProductItem, ReceiptScanData, ReceiptItem } from '@/types';
 import { demoReceipts } from '@/data/mockProducts';
+import { calculateMargin } from '@/lib/math';
 import { formatRupiah } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,6 +31,7 @@ interface ReceiptScanViewProps {
   onUpdateProductBuyPrice?: (productName: string, newBuyPrice: number) => void;
   onUpdateBuyPrices?: (updatedItems: { productId: string; newBuyPrice: number; productName?: string }[]) => void;
   onOpenAlertModal?: (product: ProductItem) => void;
+  onAcceptPrice?: (productId: string, newPrice: number, name?: string) => void;
   onRefreshKatalog?: () => void;
 }
 
@@ -47,6 +49,8 @@ export const ReceiptScanView: React.FC<ReceiptScanViewProps> = ({
   onUpdateProductBuyPrice,
   onUpdateBuyPrices,
   onRefreshKatalog,
+  onOpenAlertModal,
+  onAcceptPrice,
 }) => {
   const { user } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -530,6 +534,13 @@ export const ReceiptScanView: React.FC<ReceiptScanViewProps> = ({
               const oldBuyPrice = currentProduct?.buyPrice || item.unitBuyPrice;
               const priceIncreased = item.unitBuyPrice > oldBuyPrice;
               const selisihKenaikan = item.unitBuyPrice - oldBuyPrice;
+              const recommendation = calculateMargin(
+                item.unitBuyPrice,
+                currentProduct?.currentSellPrice || 0,
+                currentProduct?.targetMarginPercent || 15,
+                500,
+                5
+              );
 
               if (isEditing) {
                 return (
@@ -683,6 +694,40 @@ export const ReceiptScanView: React.FC<ReceiptScanViewProps> = ({
                       Subtotal: <strong className="text-[#1A1D1E] font-bold text-xs">{formatRupiah(item.totalBuyPrice)}</strong>
                     </span>
                   </div>
+
+                  {recommendation.smartRoundedSellPrice !== (currentProduct?.currentSellPrice || 0) && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase text-[#15803D]">Rekomendasi AI</span>
+                          <div className="text-sm font-extrabold text-[#15803D] tabular-nums">
+                            {formatRupiah(recommendation.smartRoundedSellPrice)}
+                          </div>
+                        </div>
+                        <span className="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-[#15803D] border border-emerald-200">
+                          Margin {recommendation.recommendedMarginPercent.toFixed(1)}%
+                        </span>
+                      </div>
+                      {currentProduct && (
+                        <div className="mt-2 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => onAcceptPrice?.(currentProduct.id, recommendation.smartRoundedSellPrice, currentProduct.name)}
+                            className="flex-1 h-9 rounded-lg bg-[#15803D] text-white text-[11px] font-bold hover:bg-[#15803D]/90"
+                          >
+                            Terapkan harga
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onOpenAlertModal?.({ ...currentProduct, recommendedSellPrice: recommendation.smartRoundedSellPrice })}
+                            className="flex-1 h-9 rounded-lg border border-[#15803D] text-[#15803D] text-[11px] font-bold hover:bg-white"
+                          >
+                            Ketik pilihan sendiri
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

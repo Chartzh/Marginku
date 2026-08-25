@@ -544,6 +544,7 @@ const AppContent: React.FC = () => {
             scanResult={shelfScanResult}
             onScanResultChange={setShelfScanResult}
             onOpenAlertModal={(prod) => setAlertProduct(prod)}
+            onAcceptPrice={handleAcceptPrice}
           />
         </div>
 
@@ -552,6 +553,7 @@ const AppContent: React.FC = () => {
             products={products}
             activeReceipt={activeReceipt}
             onActiveReceiptChange={setActiveReceipt}
+            onAcceptPrice={handleAcceptPrice}
             onUpdateProductBuyPrice={handleUpdateProductBuyPrice}
             onOpenAlertModal={(prod) => setAlertProduct(prod)}
             onRefreshKatalog={fetchKatalog}
@@ -563,6 +565,7 @@ const AppContent: React.FC = () => {
             products={products}
             settings={settings}
             onOpenAlertModal={(prod) => setAlertProduct(prod)}
+            onAcceptPrice={handleAcceptPrice}
             onAddNewProduct={handleAddNewProduct}
             onUpdateProduct={(productId, updates) => {
               setProducts((prev) =>

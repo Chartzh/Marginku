@@ -22,6 +22,7 @@ interface CatalogViewProps {
   products: ProductItem[];
   settings: StoreSettings;
   onOpenAlertModal: (product: ProductItem) => void;
+  onAcceptPrice?: (productId: string, newPrice: number, name?: string) => void;
   onAddNewProduct?: (newProduct: Omit<ProductItem, 'id' | 'lastUpdated'>) => void;
   onUpdateProduct?: (productId: string, updates: Partial<ProductItem>) => void;
   onNavigateToScanReceipt?: () => void;
@@ -34,6 +35,7 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
   onOpenAlertModal,
   onAddNewProduct,
   onDeleteProducts,
+  onAcceptPrice,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | MarginStatus>('ALL');
@@ -320,6 +322,8 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
               : 'text-[#15803D] bg-emerald-50 border-emerald-200';
 
             const isSelected = selectedProductIds.includes(prod.id);
+            const recommendedPrice = prod.recommendedSellPrice || calc.smartRoundedSellPrice;
+            const hasRecommendation = recommendedPrice !== prod.currentSellPrice;
 
             const handleCardClick = () => {
               if (isDeleteMode) {
@@ -364,6 +368,14 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                   {prod.category} • Stok: <strong className="text-[#1A1D1E] font-semibold tabular-nums">{prod.stockQty ?? 0}</strong> {prod.unit}
                 </div>
 
+                <div className="text-[10px] text-gray-400 font-medium">
+                  Scan terakhir: {new Date(prod.lastUpdated).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                </div>
+
                 {/* Row 3: Shelf Price & Status Badge */}
                 <div className="flex justify-between items-center mt-1 pt-2 border-t border-[#F0F2F5]">
                   <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${statusColor}`}>
@@ -376,6 +388,40 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
                     </span>
                   </div>
                 </div>
+
+                {hasRecommendation && (
+                  <div className="mt-1 rounded-xl border border-emerald-200 bg-emerald-50 p-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase text-[#15803D]">Rekomendasi AI</span>
+                        <div className="text-sm font-extrabold text-[#15803D] tabular-nums">
+                          {formatRupiah(recommendedPrice)}
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-[#15803D] border border-emerald-200">
+                        Margin {calc.recommendedMarginPercent.toFixed(1)}%
+                      </span>
+                    </div>
+                    {!isDeleteMode && (
+                      <div className="mt-2 flex gap-2" onClick={(event) => event.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => onAcceptPrice?.(prod.id, recommendedPrice, prod.name)}
+                          className="flex-1 h-9 rounded-lg bg-[#15803D] text-white text-[11px] font-bold hover:bg-[#15803D]/90"
+                        >
+                          Terapkan harga
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onOpenAlertModal({ ...prod, recommendedSellPrice: recommendedPrice })}
+                          className="flex-1 h-9 rounded-lg border border-[#15803D] text-[#15803D] text-[11px] font-bold hover:bg-white"
+                        >
+                          Ketik pilihan sendiri
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })
