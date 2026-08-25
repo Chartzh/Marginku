@@ -7,7 +7,7 @@ export interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, storeName?: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   getToken: () => Promise<string | null>;
 }
@@ -64,9 +64,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (email: string, password: string): Promise<{ error: string | null }> => {
+  const signUp = async (email: string, password: string, storeName?: string): Promise<{ error: string | null }> => {
     try {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { store_name: storeName?.trim() || 'Warung Saya' },
+        },
+      });
       if (error) {
         return { error: error.message };
       }

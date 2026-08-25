@@ -111,7 +111,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
           if (onSuccess) onSuccess();
         }
       } else if (mode === 'REGISTER') {
-        const { error } = await signUp(email, password);
+        const { error } = await signUp(email, password, storeName);
         if (error) {
           setErrorMessage(error);
         } else {

@@ -13,6 +13,7 @@ export interface ProductItem {
   lastUpdated: string;
   imagePlaceholder?: string;
   matchedFromReceipt?: boolean;
+  recommendedSellPrice?: number;
 }
 
 export interface MarginCalculationResult {

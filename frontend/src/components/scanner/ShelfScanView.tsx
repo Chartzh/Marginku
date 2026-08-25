@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ProductItem, ShelfScanData, StoreSettings } from '@/types';
-import { demoShelfPresets } from '@/data/mockProducts';
 import { calculateMargin, fuzzyMatchScore } from '@/lib/math';
 import { formatRupiah } from '@/lib/utils';
 import {
@@ -46,7 +45,7 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
   onOpenAlertModal,
 }) => {
   const [flashlightOn, setFlashlightOn] = useState(false);
-  const [activePresetId, setActivePresetId] = useState<string>(demoShelfPresets[0]?.id || '');
+  const [activePresetId, setActivePresetId] = useState<string>('');
   const [apiLoading, setApiLoading] = useState(false);
   const [aiStageIndex, setAiStageIndex] = useState(0);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -66,19 +65,23 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
   // Initialize scanResult safely if null and products available
   useEffect(() => {
     if (!scanResult && products.length > 0) {
-      const initial = demoShelfPresets[0];
       const match = products[0];
-      if (initial && match) {
+      if (match) {
         const calc = calculateMargin(
           match.buyPrice || 0,
-          initial.detectedPrice || 0,
+          match.currentSellPrice || 0,
           match.targetMarginPercent || settings.defaultTargetMarginPercent,
           settings.roundingStep,
           settings.dangerThresholdPercent
         );
         onScanResultChange({
-          shelfData: initial,
-          matchedProduct: { ...match, currentSellPrice: initial.detectedPrice },
+          shelfData: {
+            id: `catalog-${match.id}`,
+            detectedName: match.name,
+            detectedPrice: match.currentSellPrice,
+            confidence: 1,
+          },
+          matchedProduct: match,
           analysis: calc,
         });
       }
@@ -210,7 +213,7 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
     };
   }, []);
 
-  const processDetection = (preset: typeof demoShelfPresets[0]) => {
+  const processDetection = (preset: ShelfScanData) => {
     setActivePresetId(preset.id);
     stopLiveCamera();
 
@@ -303,6 +306,7 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
           category: matched?.category ?? 'Umum',
           buyPrice: result.harga_modal,
           currentSellPrice: result.harga_rak,
+          recommendedSellPrice: result.harga_rekomendasi,
           targetMarginPercent: matched?.targetMarginPercent ?? settings.defaultTargetMarginPercent,
           unit: matched?.unit ?? 'pcs',
           lastUpdated: new Date().toISOString(),
@@ -574,14 +578,21 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
         </div>
       )}
 
-      {/* 4. Sample Chips (Presets) */}
-      <div className="space-y-2">
-        <label className="text-xs font-bold text-[#1A1D1E] block">
-          Pilih sampel label rak fisik:
-        </label>
-        <div className="flex w-full gap-1.5 overflow-x-auto pb-1 scrollbar-none select-none">
-          {demoShelfPresets.map((preset) => {
-            const isSelected = preset.id === activePresetId;
+      {/* 4. Catalog shortcuts for local testing */}
+      {products.length > 0 && (
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-[#1A1D1E] block">
+            Pilih produk katalog untuk simulasi label:
+          </label>
+          <div className="flex w-full gap-1.5 overflow-x-auto pb-1 scrollbar-none select-none">
+            {products.map((product) => {
+              const preset: ShelfScanData = {
+                id: `catalog-${product.id}`,
+                detectedName: product.name,
+                detectedPrice: product.currentSellPrice,
+                confidence: 1,
+              };
+              const isSelected = preset.id === activePresetId;
             return (
               <button
                 key={preset.id}
@@ -597,10 +608,11 @@ export const ShelfScanView: React.FC<ShelfScanViewProps> = ({
                   ({formatRupiah(preset.detectedPrice)})
                 </span>
               </button>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 5. Scan Result Analysis Card */}
       {scanResult && scanResult.matchedProduct && scanResult.analysis && (() => {
