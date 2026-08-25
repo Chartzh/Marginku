@@ -31,6 +31,7 @@ export const MarginAlertModal: React.FC<MarginAlertModalProps> = ({
   isOpen,
   onClose,
   product,
+  onAcceptPrice,
   onOverridePrice,
 }) => {
   const [nameInput, setNameInput] = useState('');
@@ -39,6 +40,7 @@ export const MarginAlertModal: React.FC<MarginAlertModalProps> = ({
   const [unitInput, setUnitInput] = useState('');
   const [buyPriceInput, setBuyPriceInput] = useState('');
   const [customPriceInput, setCustomPriceInput] = useState('');
+  const recommendedPrice = product?.recommendedSellPrice;
 
   // Sync state with product data when modal opens or product changes
   useEffect(() => {
@@ -48,7 +50,7 @@ export const MarginAlertModal: React.FC<MarginAlertModalProps> = ({
       setStockInput(product.stockQty?.toString() || '0');
       setUnitInput(product.unit || 'pcs');
       setBuyPriceInput(product.buyPrice?.toString() || '0');
-      setCustomPriceInput(product.currentSellPrice?.toString() || '0');
+      setCustomPriceInput((product.recommendedSellPrice ?? product.currentSellPrice)?.toString() || '0');
     }
   }, [product]);
 
@@ -81,6 +83,12 @@ export const MarginAlertModal: React.FC<MarginAlertModalProps> = ({
       
       onClose();
     }
+  };
+
+  const handleAcceptRecommendation = () => {
+    if (recommendedPrice === undefined || !nameInput.trim()) return;
+    onAcceptPrice(product.id, recommendedPrice, nameInput.trim());
+    onClose();
   };
 
   // Real-time calculations inside the form
@@ -139,6 +147,21 @@ export const MarginAlertModal: React.FC<MarginAlertModalProps> = ({
               />
             </div>
           </div>
+
+          {recommendedPrice !== undefined && (
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px]">
+              <span className="font-semibold text-emerald-800">
+                Rekomendasi AI: <strong>{formatRupiah(recommendedPrice)}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={handleAcceptRecommendation}
+                className="shrink-0 rounded-lg bg-[#15803D] px-2.5 py-1.5 font-bold text-white hover:bg-[#15803D]/90"
+              >
+                Terapkan saran AI
+              </button>
+            </div>
+          )}
 
           {/* Field 3: Total Stok */}
           <div>

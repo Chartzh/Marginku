@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ProductItem, StoreSettings, PriceAuditLog, ReceiptScanData } from '@/types';
-import { initialProducts, initialStoreSettings, demoReceipts } from '@/data/mockProducts';
+import { initialProducts, initialStoreSettings } from '@/data/mockProducts';
 import { calculateMargin } from '@/lib/math';
 import { formatRupiah } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -25,6 +25,7 @@ interface ToastState {
 
 const AppContent: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
+  const metadataStoreName = user?.user_metadata?.store_name;
 
   // LocalStorage state management with Supabase sync
   const [products, setProducts] = useState<ProductItem[]>(() => {
@@ -67,7 +68,7 @@ const AppContent: React.FC = () => {
   const [toast, setToast] = useState<ToastState>({ message: '', visible: false });
 
   // Lifted state for persistent scanning tabs
-  const [activeReceipt, setActiveReceipt] = useState<ReceiptScanData | null>(demoReceipts[0]);
+  const [activeReceipt, setActiveReceipt] = useState<ReceiptScanData | null>(null);
   const [shelfScanResult, setShelfScanResult] = useState<ShelfScanState | null>(null);
 
   // Fetch catalog from Supabase on login
@@ -98,6 +99,8 @@ const AppContent: React.FC = () => {
           lastUpdated: row.updated_at || new Date().toISOString(),
         }));
         setProducts(mappedProducts);
+      } else {
+        setProducts([]);
       }
     } catch (err) {
       console.error('Failed to load katalog:', err);
@@ -106,9 +109,13 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (user?.id) {
+      setProducts([]);
       fetchKatalog();
+      if (typeof metadataStoreName === 'string' && metadataStoreName.trim()) {
+        setSettings((current) => ({ ...current, storeName: metadataStoreName.trim() }));
+      }
     }
-  }, [user?.id, fetchKatalog]);
+  }, [user?.id, metadataStoreName, fetchKatalog]);
 
   // Sync to LocalStorage
   useEffect(() => {
@@ -207,6 +214,19 @@ const AppContent: React.FC = () => {
       })
     );
 
+    setShelfScanResult((current) =>
+      current?.matchedProduct?.id === productId
+        ? {
+            ...current,
+            matchedProduct: {
+              ...current.matchedProduct,
+              name: targetName,
+              currentSellPrice: newPrice,
+            },
+          }
+        : current
+    );
+
     // Sinkronisasi ke Supabase
     if (user?.id) {
       supabase
@@ -217,7 +237,7 @@ const AppContent: React.FC = () => {
             prod.targetMarginPercent || settings.defaultTargetMarginPercent,
         })
         .eq('user_id', user.id)
-        .ilike('nama', targetName)
+        .eq('id', productId)
         .then(({ error }) => {
           if (error) console.error('Supabase update price error:', error.message);
         });
@@ -296,15 +316,37 @@ const AppContent: React.FC = () => {
       })
     );
 
+    setShelfScanResult((current) =>
+      current?.matchedProduct?.id === productId
+        ? {
+            ...current,
+            matchedProduct: {
+              ...current.matchedProduct,
+              name: targetName,
+              currentSellPrice: overridePrice,
+              buyPrice: buyPrice !== undefined ? buyPrice : current.matchedProduct.buyPrice,
+              category: category !== undefined ? category : current.matchedProduct.category,
+              stockQty: stock !== undefined ? stock : current.matchedProduct.stockQty,
+              unit: unit !== undefined ? unit : current.matchedProduct.unit,
+            },
+          }
+        : current
+    );
+
     // Sinkronisasi ke Supabase
     if (user?.id) {
       supabase
         .from('katalog_produk')
         .update({
           harga_jual: overridePrice,
+          harga_modal: buyPrice !== undefined ? buyPrice : prod.buyPrice,
+          nama: targetName,
+          kategori: category !== undefined ? category : prod.category,
+          satuan: unit !== undefined ? unit : prod.unit,
+          stok: stock !== undefined ? stock : prod.stockQty,
         })
         .eq('user_id', user.id)
-        .ilike('nama', targetName)
+        .eq('id', productId)
         .then(({ error }) => {
           if (error) console.error('Supabase override price error:', error.message);
         });
@@ -331,7 +373,7 @@ const AppContent: React.FC = () => {
         .from('katalog_produk')
         .update({ harga_jual: price })
         .eq('user_id', user.id)
-        .ilike('nama', name)
+        .eq('id', productId)
         .then();
     }
 
@@ -542,7 +584,14 @@ const AppContent: React.FC = () => {
         <div className={activeTab === 'SETTINGS' ? 'block' : 'hidden'}>
           <SettingsView
             settings={settings}
-            onSaveSettings={(newSet) => setSettings(newSet)}
+            onSaveSettings={(newSet) => {
+              setSettings(newSet);
+              if (user?.id) {
+                supabase.auth.updateUser({
+                  data: { store_name: newSet.storeName.trim() || 'Warung Saya' },
+                });
+              }
+            }}
             onResetDemoData={handleResetDemoData}
             onApplyMarginToAllProducts={handleApplyMarginToAllProducts}
           />
